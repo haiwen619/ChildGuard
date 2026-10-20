@@ -845,6 +845,7 @@ public partial class MainWindow : FluentWindow
     {
         bool isActive = _webFilterAdapter.IsFilterActive();
         var rules = _webFilterAdapter.GetAllRules();
+        var stats = _webFilterAdapter.GetStats();
 
         _allCachedRules = rules.Select(r => new BlockedRuleItemViewModel
         {
@@ -854,17 +855,19 @@ public partial class MainWindow : FluentWindow
             IsMasked = _isMasked
         }).ToList();
 
-        int customCount = _allCachedRules.Count(r => r.IsCustom);
-        int defaultCount = _allCachedRules.Count(r => !r.IsCustom);
-        int totalCount = _allCachedRules.Count;
+        // 刷新四大维度统计徽章
+        TxtCountAdult.Text = $"🔞 成人低俗防护: {stats.AdultCount} 核心站";
+        TxtCountGambling.Text = $"🎲 涉赌网彩防护: {stats.GamblingCount} 核心站";
+        TxtCountGameGray.Text = $"🎮 租号外挂黑产: {stats.GameGrayCount} 核心站";
+        TxtCountPhishing.Text = $"🎣 钓鱼欺诈陷阱: {stats.PhishingCount} 核心站";
 
-        TxtRuleCountStats.Text = $"已激活 {totalCount} 条防护规则 (内置不良库 {defaultCount} 条 · {(_isBuiltinRulesUnlocked ? "已临时解锁" : "🔒 深度脱敏封存")}，家长自定义 {customCount} 条)";
+        TxtRuleCountStats.Text = $"已激活 {stats.TotalActiveRules} 条防护规则 (内置不良库 {stats.TotalActiveRules - stats.CustomCount} 条 · {(_isBuiltinRulesUnlocked ? "已临时解锁" : "🔒 深度脱敏封存")}，家长自定义 {stats.CustomCount} 条)";
 
         if (isActive)
         {
             BtnToggleWebFilter.Content = "停用网站屏蔽";
             BtnToggleWebFilter.Appearance = ControlAppearance.Secondary;
-            TxtWebFilterStatus.Text = $"状态: 🛡️ 已激活全系统屏蔽 (保护中·共 {totalCount} 条规则生效)";
+            TxtWebFilterStatus.Text = $"状态: 🛡️ 已激活全系统屏蔽 (保护中·共 {stats.TotalActiveRules} 条规则生效)";
             TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
         }
         else
@@ -880,28 +883,40 @@ public partial class MainWindow : FluentWindow
         BarBuiltinShieldUnlocked.Visibility = _isBuiltinRulesUnlocked ? Visibility.Visible : Visibility.Collapsed;
 
         // 更新分类筛选按钮样式
+        UpdateCategoryButtonsHighlight();
+
+        ApplyRulesFilter();
+    }
+
+    private void UpdateCategoryButtonsHighlight()
+    {
         var bc = new System.Windows.Media.BrushConverter();
         var activeBg = (System.Windows.Media.Brush)bc.ConvertFrom("#21262D")!;
         var inactiveBg = System.Windows.Media.Brushes.Transparent;
         var activeFg = System.Windows.Media.Brushes.White;
         var inactiveFg = (System.Windows.Media.Brush)bc.ConvertFrom("#8B949E")!;
 
-        BtnFilterCustom.Background = _currentRuleCategoryFilter == "Custom" ? activeBg : inactiveBg;
-        BtnFilterCustom.Foreground = _currentRuleCategoryFilter == "Custom" ? activeFg : inactiveFg;
+        void SetBtn(System.Windows.Controls.Button btn, bool isActive)
+        {
+            btn.Background = isActive ? activeBg : inactiveBg;
+            btn.Foreground = isActive ? activeFg : inactiveFg;
+        }
 
-        BtnFilterDefault.Background = _currentRuleCategoryFilter == "Default" ? activeBg : inactiveBg;
-        BtnFilterDefault.Foreground = _currentRuleCategoryFilter == "Default" ? activeFg : inactiveFg;
-
-        ApplyRulesFilter();
+        SetBtn(BtnFilterCustom, _currentRuleCategoryFilter == "Custom");
+        SetBtn(BtnFilterAdult, _currentRuleCategoryFilter == "Adult");
+        SetBtn(BtnFilterGambling, _currentRuleCategoryFilter == "Gambling");
+        SetBtn(BtnFilterGameGray, _currentRuleCategoryFilter == "GameGray");
+        SetBtn(BtnFilterPhishing, _currentRuleCategoryFilter == "Phishing");
+        SetBtn(BtnFilterAll, _currentRuleCategoryFilter == "All");
     }
 
     private void BtnFilterCategory_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
 
-        if (tag == "Default" && !_isBuiltinRulesUnlocked)
+        if (tag != "Custom" && !_isBuiltinRulesUnlocked)
         {
-            // 点击内置通用防护库，若未解锁，直接引导弹出证书与安全确认
+            // 点击任何内置防护库，若未解锁，直接引导弹出知情证书与安全确认
             BtnUnlockBuiltinRules_Click(sender, e);
             return;
         }
@@ -925,7 +940,10 @@ public partial class MainWindow : FluentWindow
             filtered = _currentRuleCategoryFilter switch
             {
                 "Custom" => _allCachedRules.Where(r => r.IsCustom),
-                "Default" => _allCachedRules.Where(r => !r.IsCustom),
+                "Adult" => _allCachedRules.Where(r => !r.IsCustom && r.Category.Contains("成人")),
+                "Gambling" => _allCachedRules.Where(r => !r.IsCustom && r.Category.Contains("赌博")),
+                "GameGray" => _allCachedRules.Where(r => !r.IsCustom && r.Category.Contains("租号")),
+                "Phishing" => _allCachedRules.Where(r => !r.IsCustom && r.Category.Contains("钓鱼")),
                 _ => _allCachedRules
             };
         }

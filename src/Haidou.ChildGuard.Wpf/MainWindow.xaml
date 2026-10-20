@@ -483,8 +483,12 @@
                                                 <TextBlock x:Name="TxtRuleCountStats" Text="(加载中...)" FontSize="11.5" Foreground="#7D8590" VerticalAlignment="Center"/>
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                <Button x:Name="BtnFilterCustom" Content="👤 家长自定义拦截" FontSize="11" Height="26" Padding="10,0" Background="#21262D" Foreground="#FFFFFF" BorderThickness="0" Margin="0,0,6,0" Click="BtnFilterCategory_Click" Tag="Custom"/>
-                                                <Button x:Name="BtnFilterDefault" Content="🛡️ 内置通用防护库" FontSize="11" Height="26" Padding="10,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Click="BtnFilterCategory_Click" Tag="Default"/>
+                                                <Button x:Name="BtnFilterCustom" Content="👤 家长自定义" FontSize="11" Height="26" Padding="8,0" Background="#21262D" Foreground="#FFFFFF" BorderThickness="0" Margin="0,0,4,0" Click="BtnFilterCategory_Click" Tag="Custom"/>
+                                                <Button x:Name="BtnFilterAdult" Content="🔞 成人低俗" FontSize="11" Height="26" Padding="8,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Margin="0,0,4,0" Click="BtnFilterCategory_Click" Tag="Adult"/>
+                                                <Button x:Name="BtnFilterGambling" Content="🎲 涉赌网彩" FontSize="11" Height="26" Padding="8,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Margin="0,0,4,0" Click="BtnFilterCategory_Click" Tag="Gambling"/>
+                                                <Button x:Name="BtnFilterGameGray" Content="🎮 租号外挂" FontSize="11" Height="26" Padding="8,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Margin="0,0,4,0" Click="BtnFilterCategory_Click" Tag="GameGray"/>
+                                                <Button x:Name="BtnFilterPhishing" Content="🎣 钓鱼欺诈" FontSize="11" Height="26" Padding="8,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Margin="0,0,4,0" Click="BtnFilterCategory_Click" Tag="Phishing"/>
+                                                <Button x:Name="BtnFilterAll" Content="全部" FontSize="11" Height="26" Padding="8,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Click="BtnFilterCategory_Click" Tag="All"/>
                                             </StackPanel>
                                         </Grid>
 
@@ -508,6 +512,21 @@
                                                     </StackPanel>
                                                     <TextBlock Text="根据《未成年人网络保护条例》防不良诱导规范，内置涉黄、涉赌等有害域名默认封存并不予明文罗列，避免反向告知未成年人。底层 Hosts 持续生效拦截中。"
                                                                TextWrapping="Wrap" FontSize="11" Foreground="#8B949E" LineHeight="17"/>
+                                                    <!-- 四大维度分类防护徽章 -->
+                                                    <WrapPanel Margin="0,8,0,0">
+                                                        <Border Background="#24161C" CornerRadius="4" Padding="6,2" Margin="0,0,6,4">
+                                                            <TextBlock x:Name="TxtCountAdult" Text="🔞 成人低俗防护: 60 核心站" FontSize="10.5" Foreground="#FF7B72"/>
+                                                        </Border>
+                                                        <Border Background="#242116" CornerRadius="4" Padding="6,2" Margin="0,0,6,4">
+                                                            <TextBlock x:Name="TxtCountGambling" Text="🎲 涉赌网彩防护: 46 核心站" FontSize="10.5" Foreground="#D29922"/>
+                                                        </Border>
+                                                        <Border Background="#162224" CornerRadius="4" Padding="6,2" Margin="0,0,6,4">
+                                                            <TextBlock x:Name="TxtCountGameGray" Text="🎮 租号外挂黑产: 33 核心站" FontSize="10.5" Foreground="#58A6FF"/>
+                                                        </Border>
+                                                        <Border Background="#1E1928" CornerRadius="4" Padding="6,2" Margin="0,0,6,4">
+                                                            <TextBlock x:Name="TxtCountPhishing" Text="🎣 钓鱼欺诈陷阱: 19 核心站" FontSize="10.5" Foreground="#BC8CFF"/>
+                                                        </Border>
+                                                    </WrapPanel>
                                                 </StackPanel>
                                                 <ui:Button x:Name="BtnUnlockBuiltinRules" Grid.Column="2" Content="🔓 家长授权查阅" Appearance="Secondary" Height="34" Padding="14,0"
                                                            VerticalAlignment="Center" Click="BtnUnlockBuiltinRules_Click"/>
