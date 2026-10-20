@@ -1,0 +1,605 @@
+﻿<ui:FluentWindow x:Class="Haidou.ChildGuard.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
+        mc:Ignorable="d"
+        Title="海豆·童伴守护 (Haidou ChildGuard) - 纯本地数字健康护航"
+        Height="780" Width="1180"
+        MinHeight="680" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        Icon="Resources/logo.ico"
+        ShowInTaskbar="True"
+        Loaded="FluentWindow_Loaded"
+        FontFamily="Microsoft YaHei UI, Segoe UI Variable Display, Segoe UI">
+
+    <!-- 现代主题样式与资源 -->
+    <ui:FluentWindow.Resources>
+        <!-- 侧边导航项默认样式 -->
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#9DA5B4" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Padding" Value="14,0,14,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#252A33" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="Active">
+                                <Setter TargetName="border" Property="Background" Value="#1C2E24" />
+                                <Setter Property="Foreground" Value="#3FB950" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- KPI 态势卡片通用容器 -->
+        <Style x:Key="KpiCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#181B20" />
+            <Setter Property="BorderBrush" Value="#262C36" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="18,16" />
+        </Style>
+
+        <!-- 扁平现代卡片 ListViewItem 样式 -->
+        <Style x:Key="CardListViewItemStyle" TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0,2" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="ItemBorder" Background="#16181D" BorderBrush="#232730" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#20242D" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#343B47" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#222B24" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#3FB950" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <!-- 主界面主体 -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- 现代 Windows 11 标题栏 -->
+            <ui:TitleBar Grid.Row="0"
+                         Title="海豆·童伴守护 - 100% 纯本地开源公益守护系统"
+                         Icon="ShieldCheckmark24">
+                <ui:TitleBar.TrailingContent>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <Border Background="#102E1B" BorderBrush="#238636" BorderThickness="1" CornerRadius="12" Padding="10,3" Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="#3FB950" Margin="0,0,6,0"/>
+                                <TextBlock Text="看门狗互保 · 右下角托盘守护中" FontSize="11" Foreground="#3FB950" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ui:TitleBar.TrailingContent>
+            </ui:TitleBar>
+
+            <!-- 页面主体双栏架构 -->
+            <Grid Grid.Row="1" Margin="20,8,20,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 1. 左侧优雅透明导航栏 -->
+                <Grid Grid.Column="0" Margin="0,0,16,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 品牌标志区 (专属高保真 Logo) -->
+                    <StackPanel Grid.Row="0" Margin="8,4,0,24">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
+                            <Border Background="#15281C" CornerRadius="8" Width="36" Height="36" Margin="0,0,10,0" Padding="4">
+                                <Image Source="Resources/logo.png" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="童伴守护星" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                <TextBlock Text="Local-First Care" FontSize="10.5" Foreground="#7D8590"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 导航选项列表 -->
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="功能中心" FontSize="11" FontWeight="SemiBold" Foreground="#6E7681" Margin="8,0,0,10" />
+
+                        <Button x:Name="BtnNavOverview" Style="{StaticResource NavButtonStyle}" Tag="Active" Click="BtnNav_Click" CommandParameter="0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="今日健康概览"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnNavApps" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📱" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="应用使用明细"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnNavPolicy" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏳" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="防沉迷与健康策略"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnNavTotp" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="3">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔐" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="家长离线 2FA 与密码"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="BtnNavAbout" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="4">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ️" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="公益理念与隐私承诺"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- 侧边栏底部退出与状态 -->
+                    <StackPanel Grid.Row="2">
+                        <Button Style="{StaticResource NavButtonStyle}" Click="BtnRequestExit_Click" Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🚪" FontSize="14" Margin="0,0,10,0"/>
+                                <TextBlock Text="退出童伴守护 (需密码)" Foreground="#FF7B72"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Border Background="#14171C" CornerRadius="8" Padding="12,10" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock Text="系统托盘 · 纯本地常驻" FontSize="10.5" Foreground="#3FB950" FontWeight="SemiBold"/>
+                                <TextBlock Text="右下角托盘随时双击呼出看板" FontSize="10" Foreground="#6E7681" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 2. 右侧核心内容大视窗 -->
+                <Border Grid.Column="1" Background="#111317" BorderBrush="#1F232B" BorderThickness="1" CornerRadius="12" Padding="26,22">
+                    <Grid>
+                        <!-- 面板 0: 今日概览 -->
+                        <ScrollViewer x:Name="PanelOverview" Visibility="Visible">
+                            <StackPanel>
+                                <!-- 异常恢复横幅提示 -->
+                                <Border x:Name="BannerRecovered" Visibility="Collapsed" Background="#332211" BorderBrush="#9E6A03" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,16">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="⚠️" FontSize="16" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="检测到系统曾被非授权终止（如任务管理器强杀），独立看门狗已在 0.16 秒内自愈复活！" FontSize="12.5" FontWeight="SemiBold" Foreground="#F2CC60"/>
+                                            <TextBlock Text="未输入家长密码的强行退出已被记录，主窗口已自动前置激活，系统保持全方位守护。" FontSize="11" Foreground="#C9D1D9" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 页面标题 -->
+                                <TextBlock Text="今日数码健康态势" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="所有行为数据经 Windows DPAPI 加密存储于本地，拔掉网线完全独立正常运行。"
+                                           FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <!-- 顶栏三张 KPI 现代卡片 -->
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 卡片 1: 今日累计使用时长 -->
+                                    <Border Grid.Column="0" Style="{StaticResource KpiCardStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                                <TextBlock Text="今日活跃时长" FontSize="12.5" Foreground="#8B949E"/>
+                                                <Border HorizontalAlignment="Right" Background="#1E2838" CornerRadius="6" Width="26" Height="26">
+                                                    <TextBlock Text="⏱️" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1" x:Name="TxtTotalScreenTime" Text="0 小时 0 分钟" FontSize="23" FontWeight="Bold" Foreground="#58A6FF" Margin="0,0,0,8"/>
+                                            <TextBlock Grid.Row="2" x:Name="TxtLimitRemaining" Text="限额 120 分钟 (已消耗 0%)" FontSize="11.5" Foreground="#7D8590" Margin="0,0,0,8"/>
+                                            <ProgressBar Grid.Row="3" x:Name="ProgressScreenTime" Height="4" Maximum="120" Value="0" Background="#21262D" Foreground="#58A6FF" BorderThickness="0"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 卡片 2: 当前前台活跃程序 -->
+                                    <Border Grid.Column="2" Style="{StaticResource KpiCardStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="6" Height="6" Fill="#3FB950" Margin="0,0,6,0"/>
+                                                    <TextBlock Text="当前焦点程序" FontSize="12.5" Foreground="#8B949E"/>
+                                                </StackPanel>
+                                                <Border HorizontalAlignment="Right" Background="#261E38" CornerRadius="6" Width="26" Height="26">
+                                                    <TextBlock Text="💻" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1" x:Name="TxtCurrentApp" Text="探测中..." FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
+                                            <TextBlock Grid.Row="2" x:Name="TxtCurrentTitle" Text="正在感知焦点窗口..." FontSize="11.5" Foreground="#7D8590" TextTrimming="CharacterEllipsis"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 卡片 3: 护眼与休息状态 -->
+                                    <Border Grid.Column="4" Style="{StaticResource KpiCardStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                                <TextBlock Text="视力与作息状态" FontSize="12.5" Foreground="#8B949E"/>
+                                                <Border HorizontalAlignment="Right" Background="#1B2E20" CornerRadius="6" Width="26" Height="26">
+                                                    <TextBlock Text="🌿" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1" x:Name="TxtRestCountdown" Text="健康度极佳" FontSize="20" FontWeight="Bold" Foreground="#3FB950" Margin="0,0,0,4"/>
+                                            <TextBlock Grid.Row="2" Text="建议每连续使用 45 分钟远眺 5 分钟" FontSize="11.5" Foreground="#7D8590"/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 保护机制状态栏 -->
+                                <Border Background="#141922" BorderBrush="#202A38" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,20">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="🛡️" FontSize="16" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="双重铁壁防强杀激活中 (系统托盘双向常驻 + 独立 Haidou.Watchdog 0.16 秒自愈)" FontSize="12.5" FontWeight="SemiBold" Foreground="#58A6FF"/>
+                                            <TextBlock Text="窗口可随手最小化至右下角系统托盘；若遭遇任务管理器强杀，后台守护将在 0.16 秒内自愈拉起并置顶主界面。退出必须输入家长密码。" FontSize="11" Foreground="#8B949E" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 今日应用时长列表 -->
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="今日主要活跃应用排行" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                    <TextBlock Text="实时更新" FontSize="11" Foreground="#3FB950" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <ListView x:Name="ListTodayUsage"
+                                          ItemContainerStyle="{StaticResource CardListViewItemStyle}"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          Height="260">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="36" />
+                                                    <ColumnDefinition Width="220" />
+                                                    <ColumnDefinition Width="120" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="140" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <Border Grid.Column="0" Background="{Binding CategoryBg}" Width="28" Height="28" CornerRadius="14" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding IconEmoji}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ProcessName}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="本地执行程序" FontSize="10.5" Foreground="#6E7681"/>
+                                                </StackPanel>
+
+                                                <Border Grid.Column="2" Background="{Binding CategoryBg}" CornerRadius="10" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Category}" FontSize="11" Foreground="{Binding CategoryColor}" FontWeight="SemiBold"/>
+                                                </Border>
+
+                                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="挂机: " FontSize="11.5" Foreground="#6E7681"/>
+                                                    <TextBlock Text="{Binding AfkTimeDisplay}" FontSize="11.5" Foreground="#8B949E" Margin="0,0,14,0"/>
+                                                    <TextBlock Text="启动: " FontSize="11.5" Foreground="#6E7681"/>
+                                                    <TextBlock Text="{Binding LaunchCount}" FontSize="11.5" Foreground="#8B949E"/>
+                                                    <TextBlock Text=" 次" FontSize="11.5" Foreground="#6E7681"/>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="4" Text="{Binding ActiveTimeDisplay}" FontSize="13.5" FontWeight="Bold" Foreground="#3FB950" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- 面板 1: 应用明细 -->
+                        <ScrollViewer x:Name="PanelApps" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="应用程序使用追踪明细" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="纳秒级监听前台焦点窗口变更，不使用低级轮询，极低 CPU 占用。"
+                                           FontSize="12" Foreground="#8B949E" Margin="0,0,0,16"/>
+
+                                <ListView x:Name="ListAllActivities"
+                                          ItemContainerStyle="{StaticResource CardListViewItemStyle}"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          Height="500">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="140" />
+                                                    <ColumnDefinition Width="180" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="90" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding StartTimeUtc, StringFormat={}{0:HH:mm:ss}}" FontSize="12" Foreground="#8B949E" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding ProcessName}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding WindowTitle}" FontSize="12" Foreground="#7D8590" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                                                <TextBlock Grid.Column="3" Text="{Binding DurationSeconds, StringFormat={}{0:F0} 秒}" FontSize="12.5" FontWeight="SemiBold" Foreground="#58A6FF" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- 面板 2: 规则与策略 -->
+                        <ScrollViewer x:Name="PanelPolicy" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="防沉迷与健康作息策略" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="所有策略存放在本地加密数据库中，需家长管理员权限或离线 TOTP 验证后方可修改。"
+                                           FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="每日屏幕总时长限制" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                        <TextBlock Text="防止未成年人超时沉迷，到达设定上限后将温和提醒并锁定屏幕" FontSize="12" Foreground="#7D8590" Margin="0,0,0,12"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="每日限额 (分钟):" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,12,0"/>
+                                            <ui:TextBox x:Name="InputDailyLimit" Text="120" Width="90" Margin="0,0,14,0"/>
+                                            <ui:Button Content="保存配额" Appearance="Primary" Click="BtnSavePolicy_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="就寝断屏时间段 (Curfew Lock)" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                        <TextBlock Text="设定夜间强制关屏时间段，保证充足睡眠" FontSize="12" Foreground="#7D8590" Margin="0,0,0,12"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="开始时间:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,8,0"/>
+                                            <ui:TextBox x:Name="InputCurfewStart" Text="22:00" Width="80" Margin="0,0,14,0"/>
+                                            <TextBlock Text="结束时间:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,8,0"/>
+                                            <ui:TextBox x:Name="InputCurfewEnd" Text="07:00" Width="80" Margin="0,0,16,0"/>
+                                            <ui:Button Content="更新时段" Appearance="Primary" Click="BtnSavePolicy_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource KpiCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="全系统级不良网站屏蔽 (Hosts 过滤规则)" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                        <TextBlock Text="基于 GitHub 顶级开源成人与涉赌黑名单（StevenBlack），直接在 Windows 底层 Hosts 拦截，Chrome/Edge/Firefox 全局生效，隐身无痕模式无法穿透。"
+                                                   TextWrapping="Wrap" FontSize="12" Foreground="#7D8590" Margin="0,0,0,14"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:Button x:Name="BtnToggleWebFilter" Content="一键激活网站屏蔽" Appearance="Primary" Click="BtnToggleWebFilter_Click" Margin="0,0,14,0"/>
+                                            <TextBlock x:Name="TxtWebFilterStatus" Text="状态: 未激活" VerticalAlignment="Center" Foreground="#D29922"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- 面板 3: TOTP 离线绑定与密码管理 -->
+                        <ScrollViewer x:Name="PanelTotp" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="家长离线双重身份验证 (2FA) 与主密码" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="100% 纯本地运作，0 网络请求。密码与密钥均经 Windows DPAPI 加密固化保护。"
+                                           FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,20">
+                                    <StackPanel>
+                                        <TextBlock Text="🔑 家长安全主密码管理" FontSize="14.5" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,6"/>
+                                        <TextBlock Text="此密码用于阻止非授权退出软件与保护限额策略，支持随时修改更新。" FontSize="12" Foreground="#7D8590" Margin="0,0,0,14"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="原主密码:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,8,0"/>
+                                            <PasswordBox x:Name="InputOldPwd" Width="130" Height="34" Margin="0,0,14,0" Background="#16181D" Foreground="#FFFFFF" BorderBrush="#30363D"/>
+                                            <TextBlock Text="新主密码:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,8,0"/>
+                                            <PasswordBox x:Name="InputNewPwdChange" Width="130" Height="34" Margin="0,0,14,0" Background="#16181D" Foreground="#FFFFFF" BorderBrush="#30363D"/>
+                                            <ui:Button Content="修改主密码" Appearance="Primary" Click="BtnChangePassword_Click"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="TxtChangePwdResult" Text="" FontSize="12" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="240" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 二维码显示卡片 -->
+                                    <Border Grid.Column="0" Background="#16181D" BorderBrush="#252A33" BorderThickness="1" CornerRadius="10" Padding="16" HorizontalAlignment="Center">
+                                        <StackPanel HorizontalAlignment="Center">
+                                            <Border CornerRadius="8" Background="#FFFFFF" Padding="6" Margin="0,0,0,10">
+                                                <Image x:Name="ImgTotpQr" Width="190" Height="190"/>
+                                            </Border>
+                                            <TextBlock Text="使用手机身份验证器扫码" HorizontalAlignment="Center" FontSize="11.5" Foreground="#7D8590"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 绑定操作 -->
+                                    <StackPanel Grid.Column="1" Margin="24,0,0,0">
+                                        <TextBlock Text="密钥 (Base32 编码，已通过 Windows DPAPI 本地固化保护):" FontSize="12.5" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,6"/>
+                                        <ui:TextBox x:Name="TxtTotpSecret" IsReadOnly="True" Width="400" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+
+                                        <TextBlock Text="扫码完成后，请输入手机上生成的 6 位动态验证码进行验证测试:" FontSize="12.5" Foreground="#C9D1D9" Margin="0,0,0,8"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <ui:TextBox x:Name="InputTotpCode" PlaceholderText="输入 6 位数字" Width="140" MaxLength="6" Margin="0,0,12,0"/>
+                                            <ui:Button Content="离线验证" Appearance="Primary" Click="BtnVerifyTotp_Click" Margin="0,0,12,0"/>
+                                            <ui:Button Content="重置生成新密钥" Appearance="Secondary" Click="BtnResetTotp_Click"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="TxtTotpResult" Text="" FontSize="13" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- 面板 4: 关于与公益声明 -->
+                        <ScrollViewer x:Name="PanelAbout" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="关于 海豆·童伴守护 (Haidou ChildGuard)" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="项目定位：100% 纯本地、无商业广告、零隐私上云的开源公益级青少年数码健康护航系统。"
+                                           FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="🛡️ 绝对数据本地化承诺 (Local-First)" FontSize="14.5" FontWeight="Bold" Foreground="#58A6FF" Margin="0,0,0,6"/>
+                                        <TextBlock Text="• 绝不上传任何屏幕截图、窗口日志、按键信息至任何云端服务器；&#x0a;• 采用 SQLite 本地闭环存储，密钥受 Windows DPAPI 硬件保护，断网完全正常运行；&#x0a;• 7 天滚动自动覆盖清理，决不无故挤占家庭电脑硬盘空间。"
+                                                   TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="20"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource KpiCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="🤝 反跟踪软件联盟 (Coalition Against Stalkerware) 合规宣言" FontSize="14.5" FontWeight="Bold" Foreground="#3FB950" Margin="0,0,0,6"/>
+                                        <TextBlock Text="• 我们构建工具是为了引导和保护未成年人的身心视力健康，而非搞隐匿偷窥；&#x0a;• 桌面托盘保持常驻清晰状态，任何屏幕守护动作均有可见透明标识。"
+                                                   TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="20"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- 全屏模态弹窗遮罩 (用于首次设置家长密码与退出核销) -->
+        <Grid x:Name="ModalHost" Visibility="Collapsed" Panel.ZIndex="9999" Background="#D9080A0E">
+            <!-- 模态框 1: 首次启动设定家长密码 -->
+            <Border x:Name="ModalSetupPassword" Visibility="Collapsed"
+                    Width="480" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#16191F" BorderBrush="#2D333B" BorderThickness="1"
+                    CornerRadius="14" Padding="28,26">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" Color="#000000" Opacity="0.85" ShadowDepth="8" />
+                </Border.Effect>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <Border Background="#1C3827" CornerRadius="8" Width="38" Height="38" Margin="0,0,12,0">
+                            <TextBlock Text="🔐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="首次使用 · 请设置家长主密码" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            <TextBlock Text="防止未成年人在任务管理器中轻易退出" FontSize="11.5" Foreground="#7D8590"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="为保证守护系统在本地有效运转，您需要设置一个专属管理密码。日常退出守护软件、修改屏幕时长策略时均需输入此密码核验。"
+                               TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="19" Margin="0,0,0,18"/>
+
+                    <TextBlock Text="请设置主密码 (支持字母或数字，至少 4 位):" FontSize="12.5" Foreground="#C9D1D9" Margin="0,0,0,6"/>
+                    <PasswordBox x:Name="InputNewPassword" Height="36" Margin="0,0,0,14" Background="#0D1117" Foreground="#FFFFFF" BorderBrush="#30363D"/>
+
+                    <TextBlock Text="请再次确认主密码:" FontSize="12.5" Foreground="#C9D1D9" Margin="0,0,0,6"/>
+                    <PasswordBox x:Name="InputConfirmPassword" Height="36" Margin="0,0,0,10" Background="#0D1117" Foreground="#FFFFFF" BorderBrush="#30363D"/>
+
+                    <TextBlock x:Name="TxtSetupError" Text="" FontSize="12" Foreground="#FF7B72" Margin="0,0,0,14" TextWrapping="Wrap"/>
+
+                    <ui:Button Content="完成设置并激活系统保护" Appearance="Primary" Height="38" HorizontalAlignment="Stretch" Click="BtnConfirmSetupPassword_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 模态框 2: 家长身份核销 · 退出童伴守护 -->
+            <Border x:Name="ModalExitAuth" Visibility="Collapsed"
+                    Width="460" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#16191F" BorderBrush="#3D2929" BorderThickness="1"
+                    CornerRadius="14" Padding="28,26">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" Color="#000000" Opacity="0.85" ShadowDepth="8" />
+                </Border.Effect>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <Border Background="#3D1D1D" CornerRadius="8" Width="38" Height="38" Margin="0,0,12,0">
+                            <TextBlock Text="🛡️" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="家长身份核销 · 退出童伴守护" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            <TextBlock Text="系统处于持续健康护航中" FontSize="11.5" Foreground="#7D8590"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="若要完全关闭退出童伴守护，请输入您设置的家长密码（或使用手机身份验证器上绑定的 6 位动态验证码）："
+                               TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="19" Margin="0,0,0,18"/>
+
+                    <PasswordBox x:Name="InputExitPassword" Height="36" Margin="0,0,0,10" Background="#0D1117" Foreground="#FFFFFF" BorderBrush="#30363D"/>
+                    <TextBlock x:Name="TxtExitError" Text="" FontSize="12" Foreground="#FF7B72" Margin="0,0,0,14" TextWrapping="Wrap"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button Grid.Column="0" Content="取消" Appearance="Secondary" Height="36" HorizontalAlignment="Stretch" Click="BtnCancelExit_Click"/>
+                        <ui:Button Grid.Column="2" Content="验证并退出" Appearance="Danger" Height="36" HorizontalAlignment="Stretch" Click="BtnConfirmExit_Click"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

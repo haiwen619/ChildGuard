@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Haidou.ChildGuard.Application/Haidou.ChildGuard.Application.csproj" />
+    <Project Path="src/Haidou.ChildGuard.Domain/Haidou.ChildGuard.Domain.csproj" />
+    <Project Path="src/Haidou.ChildGuard.Infrastructure/Haidou.ChildGuard.Infrastructure.csproj" />
+    <Project Path="src/Haidou.ChildGuard.Service/Haidou.ChildGuard.Service.csproj" />
+    <Project Path="src/Haidou.ChildGuard.Wpf/Haidou.ChildGuard.Wpf.csproj" />
+    <Project Path="src/Haidou.Watchdog/Haidou.Watchdog.csproj" />
+  </Folder>
+</Solution>

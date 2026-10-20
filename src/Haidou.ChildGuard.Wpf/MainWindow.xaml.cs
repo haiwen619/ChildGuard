@@ -1,0 +1,717 @@
+using System.Runtime.InteropServices;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using Haidou.ChildGuard.Application.DTOs;
+using Haidou.ChildGuard.Application.UseCases.Activities;
+using Haidou.ChildGuard.Application.UseCases.Policies;
+using Haidou.ChildGuard.Application.UseCases.Security;
+using Haidou.ChildGuard.Domain.Policies.Services;
+using Haidou.ChildGuard.Infrastructure.Adapters;
+using Haidou.ChildGuard.Infrastructure.Persistence;
+using Haidou.ChildGuard.Infrastructure.Services;
+using Wpf.Ui.Controls;
+
+using Forms = System.Windows.Forms;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+
+namespace Haidou.ChildGuard.App;
+
+public partial class MainWindow : FluentWindow
+{
+
+
+
+    private readonly RecordActivityHeartbeatUseCase _recordHeartbeatUseCase;
+    private readonly GetDailyReportUseCase _getDailyReportUseCase;
+    private readonly ManagePolicyUseCase _managePolicyUseCase;
+    private readonly AuthenticateParentUseCase _authUseCase;
+
+    private readonly WinEventHookAdapter _hookAdapter;
+    private readonly ActivityHeartbeatEngine _heartbeatEngine;
+    private readonly DatabaseContext _dbContext;
+    private readonly HostsWebFilterAdapter _webFilterAdapter;
+    private readonly LocalCredentialStore _credStore;
+    private readonly TotpService _totpService;
+
+    private readonly DispatcherTimer _watchdogGuardTimer;
+    private Forms.NotifyIcon? _notifyIcon;
+
+    private string _currentTotpSecret = string.Empty;
+    private bool _isExplicitExit = false;
+    private int _dailyLimitMinutes = 120;
+
+    public ObservableCollection<UsageItemViewModel> TodayUsageList { get; } = new();
+    public ObservableCollection<ActivitySessionDto> ActivityList { get; } = new();
+
+    public MainWindow()
+    {
+
+        InitializeComponent();
+
+        _dbContext = new DatabaseContext();
+        var activityRepo = new SqliteActivityRepository(_dbContext);
+        var policyRepo = new SqlitePolicyRepository(_dbContext);
+
+        _credStore = new LocalCredentialStore();
+        _credStore.RevokeExitPermit();
+        _totpService = new TotpService(_credStore);
+
+        _recordHeartbeatUseCase = new RecordActivityHeartbeatUseCase(activityRepo);
+        _getDailyReportUseCase = new GetDailyReportUseCase(activityRepo);
+        _managePolicyUseCase = new ManagePolicyUseCase(policyRepo);
+        _authUseCase = new AuthenticateParentUseCase(_totpService, _credStore);
+
+        _hookAdapter = new WinEventHookAdapter();
+        _heartbeatEngine = new ActivityHeartbeatEngine();
+        _webFilterAdapter = new HostsWebFilterAdapter();
+
+        ListTodayUsage.ItemsSource = TodayUsageList;
+        ListAllActivities.ItemsSource = ActivityList;
+
+        _hookAdapter.ForegroundChanged += OnForegroundChanged;
+        _heartbeatEngine.SessionFlushed += OnSessionFlushed;
+
+        InitTotp();
+        UpdateWebFilterStatusDisplay();
+
+        _hookAdapter.Start();
+        _ = LoadDailyReportAsync();
+
+        // 1. 初始化 Windows 系统托盘常驻图标 (NotifyIcon)
+        InitSystemTray();
+
+        // 2. 启动独立伴生看门狗进程 (Haidou.Watchdog.exe)
+        EnsureWatchdogRunning();
+
+        // 3. 启动双向互保定时器 (每 1.5 秒检查一次看门狗是否存活)
+        _watchdogGuardTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1.5)
+        };
+        _watchdogGuardTimer.Tick += (s, e) => EnsureWatchdogRunning();
+        _watchdogGuardTimer.Start();
+
+        // 4. 检查是否是由看门狗自愈重启拉起
+        if (Environment.GetCommandLineArgs().Contains("--recovered"))
+        {
+            BannerRecovered.Visibility = Visibility.Visible;
+            RestoreAndBringToFront();
+            _notifyIcon?.ShowBalloonTip(2000, "童伴守护已自愈复苏", "检测到异常终止，系统已自动重新恢复健康护航。", Forms.ToolTipIcon.Info);
+        }
+    }
+
+    private void FluentWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+
+        RestoreAndBringToFront();
+
+        // 首次使用检测：如果家长尚未设置主密码，强制弹出首次设置密码模态浮层
+        if (!_authUseCase.IsPasswordConfigured())
+        {
+            ModalHost.Visibility = Visibility.Visible;
+            ModalSetupPassword.Visibility = Visibility.Visible;
+            ModalExitAuth.Visibility = Visibility.Collapsed;
+            InputNewPassword.Focus();
+        }
+    }
+
+    #region 任务栏与系统托盘管理
+
+    private void InitSystemTray()
+    {
+        try
+        {
+            _notifyIcon = new Forms.NotifyIcon
+            {
+                Text = "海豆·童伴守护 - 纯本地健康护航中",
+                Visible = true
+            };
+
+            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
+            if (File.Exists(iconPath))
+            {
+                _notifyIcon.Icon = new System.Drawing.Icon(iconPath);
+            }
+            else
+            {
+                _notifyIcon.Icon = System.Drawing.SystemIcons.Shield;
+            }
+
+            // 双击托盘图标：瞬间激活并前置展示主窗口
+            _notifyIcon.DoubleClick += (s, e) =>
+            {
+                Dispatcher.Invoke(RestoreAndBringToFront);
+            };
+
+            // 点击气泡通知：瞬间激活并前置展示主窗口
+            _notifyIcon.BalloonTipClicked += (s, e) =>
+            {
+                Dispatcher.Invoke(RestoreAndBringToFront);
+            };
+
+            // 右键托盘上下文菜单
+            var menu = new Forms.ContextMenuStrip();
+
+            var itemOpen = new Forms.ToolStripMenuItem("📊 打开守护控制中心");
+            itemOpen.Click += (s, e) => Dispatcher.Invoke(RestoreAndBringToFront);
+
+            var itemStatus = new Forms.ToolStripMenuItem("🛡️ 状态: 纯本地离线保护中");
+            itemStatus.Enabled = false;
+
+            var itemSep = new Forms.ToolStripSeparator();
+
+            var itemExit = new Forms.ToolStripMenuItem("🚪 退出童伴守护 (需家长密码)");
+            itemExit.Click += (s, e) => Dispatcher.Invoke(() =>
+            {
+                RestoreAndBringToFront();
+                BtnRequestExit_Click(this, new RoutedEventArgs());
+            });
+
+            menu.Items.Add(itemOpen);
+            menu.Items.Add(itemStatus);
+            menu.Items.Add(itemSep);
+            menu.Items.Add(itemExit);
+
+            _notifyIcon.ContextMenuStrip = menu;
+        }
+        catch {}
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
+    public void MinimizeToTray(bool showBalloon = true)
+    {
+        try
+        {
+            this.WindowState = WindowState.Minimized;
+            this.ShowInTaskbar = false;
+            this.Hide();
+
+            if (showBalloon)
+            {
+                _notifyIcon?.ShowBalloonTip(
+                    1500,
+                    "海豆·童伴守护",
+                    "系统已转入后台持续护航，双击右下角系统托盘图标可随时呼出控制面板。",
+                    Forms.ToolTipIcon.None
+                );
+            }
+        }
+        catch {}
+    }
+
+    public void RestoreAndBringToFront()
+    {
+        try
+        {
+            this.ShowInTaskbar = true;
+            if (this.Visibility != Visibility.Visible)
+            {
+                this.Show();
+            }
+
+            if (this.WindowState == WindowState.Minimized)
+            {
+                this.WindowState = WindowState.Normal;
+            }
+
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            IntPtr handle = helper.EnsureHandle();
+            if (handle != IntPtr.Zero)
+            {
+                ShowWindow(handle, 9); // SW_RESTORE
+                SetForegroundWindow(handle);
+                SwitchToThisWindow(handle, true);
+            }
+
+            this.Activate();
+            this.Topmost = true;
+            this.Topmost = false;
+            this.Focus();
+        }
+        catch {}
+    }
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+        if (this.WindowState == WindowState.Minimized && !_isExplicitExit)
+        {
+            // 用户点击窗口右上角最小化按钮，也隐藏任务栏图标，只保留右下角系统托盘
+            MinimizeToTray(showBalloon: false);
+        }
+    }
+
+    #endregion
+
+    private void EnsureWatchdogRunning()
+    {
+        if (_isExplicitExit) return;
+
+        try
+        {
+            var pList = Process.GetProcessesByName("Haidou.Watchdog");
+            if (pList.Length == 0)
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string watchdogExe = Path.Combine(baseDir, "Haidou.Watchdog.exe");
+                if (File.Exists(watchdogExe))
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = watchdogExe,
+                        UseShellExecute = true,
+                        WorkingDirectory = baseDir,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        CreateNoWindow = true
+                    });
+                }
+            }
+        }
+        catch {}
+    }
+
+    #region 首次密码设置与修改
+
+    private void BtnConfirmSetupPassword_Click(object sender, RoutedEventArgs e)
+    {
+        string p1 = InputNewPassword.Password;
+        string p2 = InputConfirmPassword.Password;
+
+        if (string.IsNullOrWhiteSpace(p1) || p1.Length < 4)
+        {
+            TxtSetupError.Text = "❌ 密码长度至少需要 4 位字符。";
+            return;
+        }
+
+        if (p1 != p2)
+        {
+            TxtSetupError.Text = "❌ 两次输入的密码不一致，请重新输入。";
+            return;
+        }
+
+        bool ok = _authUseCase.SetInitialPassword(p1, out string errMsg);
+        if (ok)
+        {
+            ModalHost.Visibility = Visibility.Collapsed;
+            ModalSetupPassword.Visibility = Visibility.Collapsed;
+            System.Windows.MessageBox.Show("✅ 家长主密码设置成功！已通过 Windows DPAPI 本地硬件固化保护。退出系统或修改策略将受此密码保护。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            TxtSetupError.Text = "❌ " + errMsg;
+        }
+    }
+
+    private void BtnChangePassword_Click(object sender, RoutedEventArgs e)
+    {
+        string oldPwd = InputOldPwd.Password;
+        string newPwd = InputNewPwdChange.Password;
+
+        if (!_authUseCase.VerifyPassword(oldPwd))
+        {
+            TxtChangePwdResult.Text = "❌ 原密码验证失败，无法修改！";
+            TxtChangePwdResult.Foreground = System.Windows.Media.Brushes.OrangeRed;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newPwd) || newPwd.Length < 4)
+        {
+            TxtChangePwdResult.Text = "❌ 新密码长度至少需要 4 位字符。";
+            TxtChangePwdResult.Foreground = System.Windows.Media.Brushes.OrangeRed;
+            return;
+        }
+
+        bool ok = _authUseCase.SetInitialPassword(newPwd, out string err);
+        if (ok)
+        {
+            TxtChangePwdResult.Text = "✅ 主密码修改成功！已更新本地固化存储。";
+            TxtChangePwdResult.Foreground = System.Windows.Media.Brushes.LightGreen;
+            InputOldPwd.Password = "";
+            InputNewPwdChange.Password = "";
+        }
+        else
+        {
+            TxtChangePwdResult.Text = "❌ 修改失败: " + err;
+            TxtChangePwdResult.Foreground = System.Windows.Media.Brushes.OrangeRed;
+        }
+    }
+
+    #endregion
+
+    #region 退出守护核销机制
+
+    private void BtnRequestExit_Click(object sender, RoutedEventArgs e)
+    {
+        InputExitPassword.Password = "";
+        TxtExitError.Text = "";
+        ModalHost.Visibility = Visibility.Visible;
+        ModalExitAuth.Visibility = Visibility.Visible;
+        ModalSetupPassword.Visibility = Visibility.Collapsed;
+        InputExitPassword.Focus();
+    }
+
+    private void BtnCancelExit_Click(object sender, RoutedEventArgs e)
+    {
+        ModalHost.Visibility = Visibility.Collapsed;
+        ModalExitAuth.Visibility = Visibility.Collapsed;
+    }
+
+    private void BtnConfirmExit_Click(object sender, RoutedEventArgs e)
+    {
+        string input = InputExitPassword.Password.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            TxtExitError.Text = "❌ 请输入家长主密码或 6 位离线验证码。";
+            return;
+        }
+
+        if (_authUseCase.AuthorizeExit(input))
+        {
+            // 1. 停止互保定时器
+            _watchdogGuardTimer.Stop();
+
+            // 2. 签发合法退出许可 (看门狗捕获后放行，不自动复活)
+            _credStore.IssueExitPermit(validSeconds: 15);
+
+            // 3. 销毁系统托盘
+            if (_notifyIcon != null)
+            {
+                _notifyIcon.Visible = false;
+                _notifyIcon.Dispose();
+                _notifyIcon = null;
+            }
+
+            // 4. 标记显式安全退出
+            _isExplicitExit = true;
+            System.Windows.Application.Current.Shutdown();
+        }
+        else
+        {
+            TxtExitError.Text = "❌ 密码错误或动态验证码无效，拒绝退出守护！";
+        }
+    }
+
+    #endregion
+
+    private void OnForegroundChanged(uint pid, string processName, string title)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            TxtCurrentApp.Text = processName;
+            TxtCurrentTitle.Text = string.IsNullOrWhiteSpace(title) ? "(无标题窗口)" : title;
+        });
+
+        _heartbeatEngine.Pulse(pid, processName, title);
+    }
+
+    private async void OnSessionFlushed(ActivitySessionDto session)
+    {
+        string category = ResolveCategory(session.ProcessName);
+        var sessionWithCat = session with { Category = category };
+
+        await _recordHeartbeatUseCase.ExecuteAsync(sessionWithCat);
+
+        await Dispatcher.InvokeAsync(async () =>
+        {
+            ActivityList.Insert(0, sessionWithCat);
+            if (ActivityList.Count > 100) ActivityList.RemoveAt(ActivityList.Count - 1);
+            await LoadDailyReportAsync();
+        });
+    }
+
+    private static string ResolveCategory(string processName)
+    {
+        string p = processName.ToLowerInvariant();
+        if (p.Contains("genshin") || p.Contains("steam") || p.Contains("league") || p.Contains("game") ||
+            p.Contains("crossfire") || p.Contains("valorant") || p.Contains("starrail") || p.Contains("bilibili"))
+            return "游戏娱乐";
+
+        if (p.Contains("code") || p.Contains("devenv") || p.Contains("word") || p.Contains("excel") ||
+            p.Contains("wps") || p.Contains("notepad") || p.Contains("terminal") || p.Contains("powershell"))
+            return "学习工作";
+
+        if (p.Contains("chrome") || p.Contains("msedge") || p.Contains("firefox") || p.Contains("opera") || p.Contains("browser"))
+            return "网页浏览";
+
+        if (p.Contains("childguard") || p.Contains("explorer") || p.Contains("taskmgr"))
+            return "系统守护";
+
+        return "常规工具";
+    }
+
+    private async System.Threading.Tasks.Task LoadDailyReportAsync()
+    {
+        var report = await _getDailyReportUseCase.ExecuteAsync(DateTime.UtcNow);
+        TodayUsageList.Clear();
+
+        foreach (var app in report.TopApps)
+        {
+            string cat = app.Category;
+            if (string.IsNullOrEmpty(cat) || cat == "Uncategorized" || cat == "Other")
+            {
+                cat = ResolveCategory(app.ProcessName);
+            }
+
+            var vm = new UsageItemViewModel
+            {
+                ProcessName = app.ProcessName,
+                Category = cat,
+                ActiveTimeDisplay = FormatSeconds(app.TotalActiveSeconds),
+                AfkTimeDisplay = FormatSeconds(app.TotalAfkSeconds),
+                LaunchCount = app.LaunchCount,
+                ActiveSeconds = app.TotalActiveSeconds
+            };
+
+            AssignCategoryStyling(vm);
+            TodayUsageList.Add(vm);
+        }
+
+        int totalMins = (int)(report.TotalActiveSeconds / 60);
+        TxtTotalScreenTime.Text = $"{totalMins / 60} 小时 {totalMins % 60} 分钟";
+
+        ProgressScreenTime.Maximum = _dailyLimitMinutes;
+        ProgressScreenTime.Value = Math.Min(_dailyLimitMinutes, totalMins);
+
+        int percent = (int)((totalMins / (double)_dailyLimitMinutes) * 100);
+        TxtLimitRemaining.Text = $"限额 {_dailyLimitMinutes} 分钟 (已消耗 {percent}%)";
+    }
+
+    private static void AssignCategoryStyling(UsageItemViewModel vm)
+    {
+        switch (vm.Category)
+        {
+            case "游戏娱乐":
+                vm.CategoryColor = "#FF7B72";
+                vm.CategoryBg = "#2E1A1A";
+                vm.IconEmoji = "🎮";
+                break;
+            case "学习工作":
+                vm.CategoryColor = "#3FB950";
+                vm.CategoryBg = "#172A1C";
+                vm.IconEmoji = "📚";
+                break;
+            case "网页浏览":
+                vm.CategoryColor = "#58A6FF";
+                vm.CategoryBg = "#162436";
+                vm.IconEmoji = "🌐";
+                break;
+            case "系统守护":
+                vm.CategoryColor = "#D2A8FF";
+                vm.CategoryBg = "#241838";
+                vm.IconEmoji = "🛡️";
+                break;
+            default:
+                vm.CategoryColor = "#8B949E";
+                vm.CategoryBg = "#21262D";
+                vm.IconEmoji = "📱";
+                break;
+        }
+    }
+
+    private static string FormatSeconds(double sec)
+    {
+        int s = (int)sec;
+        if (s < 60) return $"{s} 秒";
+        int m = s / 60;
+        if (m < 60) return $"{m} 分 {s % 60} 秒";
+        return $"{m / 60} 小时 {m % 60} 分";
+    }
+
+    private void InitTotp()
+    {
+        var result = _authUseCase.GetOrGenerateRegistrationQr(Environment.MachineName);
+        _currentTotpSecret = result.SecretBase32;
+        TxtTotpSecret.Text = _currentTotpSecret;
+        RenderQrCode(result.QrCodePngBase64);
+    }
+
+    private void RenderQrCode(string base64Png)
+    {
+        try
+        {
+            byte[] bytes = Convert.FromBase64String(base64Png);
+            var bitmap = new BitmapImage();
+            using var stream = new MemoryStream(bytes);
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            ImgTotpQr.Source = bitmap;
+        }
+        catch (Exception ex)
+        {
+            TxtTotpResult.Text = "二维码渲染异常: " + ex.Message;
+        }
+    }
+
+    private void BtnResetTotp_Click(object sender, RoutedEventArgs e)
+    {
+        var result = _authUseCase.ResetAndGenerateRegistrationQr(Environment.MachineName);
+        _currentTotpSecret = result.SecretBase32;
+        TxtTotpSecret.Text = _currentTotpSecret;
+        RenderQrCode(result.QrCodePngBase64);
+        TxtTotpResult.Text = "ℹ️ 已重新生成全新密钥并使用 DPAPI 本地固化更新！";
+        TxtTotpResult.Foreground = System.Windows.Media.Brushes.LightSkyBlue;
+    }
+
+    private void BtnVerifyTotp_Click(object sender, RoutedEventArgs e)
+    {
+        string code = InputTotpCode.Text.Trim();
+        bool ok = _authUseCase.VerifyParentCode(_currentTotpSecret, code);
+        if (ok)
+        {
+            TxtTotpResult.Text = "✅ 离线验证成功！已通过本地领域安全核销。";
+            TxtTotpResult.Foreground = System.Windows.Media.Brushes.LightGreen;
+        }
+        else
+        {
+            TxtTotpResult.Text = "❌ 验证码错误或已在当前窗口重放，请重试。";
+            TxtTotpResult.Foreground = System.Windows.Media.Brushes.OrangeRed;
+        }
+    }
+
+    private async void BtnToggleWebFilter_Click(object sender, RoutedEventArgs e)
+    {
+        bool isActive = _webFilterAdapter.IsFilterActive();
+        if (isActive)
+        {
+            bool removed = await _webFilterAdapter.RemoveFilterAsync();
+            if (removed)
+            {
+                System.Windows.MessageBox.Show("已停用不良网站过滤规则。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("停用失败，修改 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        else
+        {
+            bool applied = await _webFilterAdapter.ApplyFilterAsync();
+            if (applied)
+            {
+                System.Windows.MessageBox.Show("已成功激活全系统不良网站屏蔽！底层 Hosts 生效，全浏览器无痕模式无法穿透。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("激活失败，修改系统 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        UpdateWebFilterStatusDisplay();
+    }
+
+    private void UpdateWebFilterStatusDisplay()
+    {
+        bool isActive = _webFilterAdapter.IsFilterActive();
+        if (isActive)
+        {
+            BtnToggleWebFilter.Content = "停用网站屏蔽";
+            BtnToggleWebFilter.Appearance = ControlAppearance.Secondary;
+            TxtWebFilterStatus.Text = "状态: 🛡️ 已激活全系统屏蔽 (保护中)";
+            TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
+        }
+        else
+        {
+            BtnToggleWebFilter.Content = "一键激活网站屏蔽";
+            BtnToggleWebFilter.Appearance = ControlAppearance.Primary;
+            TxtWebFilterStatus.Text = "状态: ⚠️ 未激活 (未屏蔽不良网站)";
+            TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.Orange;
+        }
+    }
+
+    private void BtnNav_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn || btn.CommandParameter == null) return;
+        int index = Convert.ToInt32(btn.CommandParameter);
+
+        BtnNavOverview.Tag = index == 0 ? "Active" : null;
+        BtnNavApps.Tag = index == 1 ? "Active" : null;
+        BtnNavPolicy.Tag = index == 2 ? "Active" : null;
+        BtnNavTotp.Tag = index == 3 ? "Active" : null;
+        BtnNavAbout.Tag = index == 4 ? "Active" : null;
+
+        PanelOverview.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PanelApps.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
+        PanelPolicy.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+        PanelTotp.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+        PanelAbout.Visibility = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void BtnSavePolicy_Click(object sender, RoutedEventArgs e)
+    {
+        int limit = int.TryParse(InputDailyLimit.Text, out int val) ? val : 120;
+        _dailyLimitMinutes = limit;
+        TimeSpan start = TimeSpan.TryParse(InputCurfewStart.Text, out var s) ? s : new TimeSpan(22, 0, 0);
+        TimeSpan end = TimeSpan.TryParse(InputCurfewEnd.Text, out var ed) ? ed : new TimeSpan(7, 0, 0);
+
+        var dto = new PolicyConfigDto(limit, 60, start, end, 45, 5);
+        await _managePolicyUseCase.UpdatePolicyAsync(dto);
+
+        ProgressScreenTime.Maximum = limit;
+        System.Windows.MessageBox.Show("DDD 领域策略已保存至本地加密仓储！", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+        _ = LoadDailyReportAsync();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+
+        if (!_isExplicitExit)
+        {
+            // 防随手点击右上角叉号退出：拦截并隐藏到任务栏最右边系统托盘（任务栏不显示它）
+            e.Cancel = true;
+            MinimizeToTray(showBalloon: true);
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+
+        _hookAdapter.Dispose();
+        _heartbeatEngine.Flush();
+        _dbContext.Dispose();
+
+        if (_notifyIcon != null)
+        {
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
+            _notifyIcon = null;
+        }
+
+        base.OnClosed(e);
+    }
+}
+
+public class UsageItemViewModel
+{
+    public string ProcessName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string ActiveTimeDisplay { get; set; } = string.Empty;
+    public string AfkTimeDisplay { get; set; } = string.Empty;
+    public int LaunchCount { get; set; }
+
+    public string CategoryColor { get; set; } = "#3FB950";
+    public string CategoryBg { get; set; } = "#172A1C";
+    public string IconEmoji { get; set; } = "📱";
+    public double ActiveSeconds { get; set; }
+}
