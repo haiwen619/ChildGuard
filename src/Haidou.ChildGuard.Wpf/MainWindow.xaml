@@ -237,6 +237,31 @@
                                 <TextBlock Text="所有行为数据经 Windows DPAPI 加密存储于本地，拔掉网线完全独立正常运行。"
                                            FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
 
+                                <!-- 腾讯电脑管家风格: 护眼模式与定制健康闹钟核心卡片 -->
+                                <Border x:Name="CardEyeCareQuickBanner" Background="#14181D" BorderBrush="#25352A" BorderThickness="1.5" CornerRadius="14" Padding="20,16" Margin="0,0,0,18">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                <TextBlock x:Name="TxtEyeCareTitle" Text="开启护眼模式，定制健康闹钟" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                <Border x:Name="BadgeEyeCareActive" Background="#163321" BorderBrush="#238636" BorderThickness="1" CornerRadius="8" Padding="8,2" Margin="10,0,0,0" Visibility="Collapsed">
+                                                    <TextBlock Text="滤蓝光守护中" FontSize="11" Foreground="#3FB950" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock x:Name="TxtEyeCareSubtitle" Text="滤减蓝光呵护双眸，定时提醒科学用眼 (当前已连续用眼 0 分钟，距离下次远眺 45 分钟)" FontSize="12" Foreground="#8B949E"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <ui:Button x:Name="BtnQuickTakeBreak" Content="🌿 立即远眺" Appearance="Secondary" Height="36" Padding="14,0" Margin="0,0,10,0" Click="BtnQuickTakeBreak_Click"/>
+                                            <ui:Button x:Name="BtnToggleEyeCare" Content="✨ 开启保护" Appearance="Primary" Height="36" Padding="18,0" Click="BtnToggleEyeCare_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
                                 <!-- 顶栏三张 KPI 现代卡片 -->
                                 <Grid Margin="0,0,0,20">
                                     <Grid.ColumnDefinitions>
@@ -415,6 +440,48 @@
                                 <TextBlock Text="防沉迷与健康作息策略" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
                                 <TextBlock Text="所有策略存放在本地加密数据库中，需家长管理员权限或离线 TOTP 验证后方可修改。"
                                            FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <!-- 护眼模式与硬件级滤蓝光定制卡片 -->
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="滤蓝光护眼模式与定制健康闹钟" FontSize="14.5" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                                                <TextBlock Text="参考腾讯电脑管家护眼理念，硬件级 Gamma 滤减短波蓝光，定时呼出全屏远眺引导" FontSize="12" Foreground="#7D8590" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <ui:Button x:Name="BtnPolicyToggleEyeCare" Content="✨ 开启护眼模式" Appearance="Primary" HorizontalAlignment="Right" VerticalAlignment="Center" Click="BtnToggleEyeCare_Click"/>
+                                        </Grid>
+
+                                        <Border Background="#12161D" CornerRadius="8" Padding="14,10" Margin="0,4,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="滤蓝光色温强度:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,14,0"/>
+                                                <Slider Grid.Column="1" x:Name="SliderEyeCareWarmth" Minimum="30" Maximum="100" Value="70"
+                                                        TickFrequency="10" IsSnapToTickEnabled="False" VerticalAlignment="Center"
+                                                        ValueChanged="SliderEyeCareWarmth_ValueChanged"/>
+                                                <TextBlock Grid.Column="2" x:Name="TxtWarmthPercent" Text="70% 经典护眼" Foreground="#58A6FF" FontWeight="SemiBold" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="健康闹钟间隔:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="0,0,12,0"/>
+                                            <ComboBox x:Name="ComboRestInterval" Width="140" Height="32" SelectedIndex="1" SelectionChanged="ComboRestInterval_SelectionChanged">
+                                                <ComboBoxItem Content="30 分钟 (幼童)"/>
+                                                <ComboBoxItem Content="45 分钟 (推荐)"/>
+                                                <ComboBoxItem Content="60 分钟"/>
+                                            </ComboBox>
+                                            <TextBlock Text="远眺时长:" VerticalAlignment="Center" Foreground="#C9D1D9" Margin="16,0,12,0"/>
+                                            <ComboBox x:Name="ComboRestDuration" Width="100" Height="32" SelectedIndex="1" SelectionChanged="ComboRestDuration_SelectionChanged">
+                                                <ComboBoxItem Content="3 分钟"/>
+                                                <ComboBoxItem Content="5 分钟"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
 
                                 <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
                                     <StackPanel>

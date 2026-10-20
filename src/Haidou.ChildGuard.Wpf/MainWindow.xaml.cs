@@ -55,6 +55,12 @@ public partial class MainWindow : FluentWindow
     private bool _isScreenAuditUnlocked = false;
     public ObservableCollection<ScreenAuditItemViewModel> ScreenAuditList { get; } = new();
 
+    private readonly BlueLightFilterAdapter _blueLightFilter;
+    private readonly EyeCareTimerEngine _eyeCareTimer;
+    private EyeCareBreakWindow? _activeBreakWindow;
+    private CurfewLockWindow? _activeCurfewWindow;
+    private int _filterWarmthPercent = 70;
+
     private readonly DispatcherTimer _watchdogGuardTimer;
     private Forms.NotifyIcon? _notifyIcon;
 
@@ -118,6 +124,12 @@ public partial class MainWindow : FluentWindow
 
         ListScreenAudits.ItemsSource = ScreenAuditList;
         _ = RefreshAuditBadgeAsync();
+
+        _blueLightFilter = new BlueLightFilterAdapter();
+        _eyeCareTimer = new EyeCareTimerEngine();
+        _eyeCareTimer.RestBreakRequired += OnRestBreakRequired;
+        _eyeCareTimer.CurfewLockRequired += OnCurfewLockRequired;
+        _eyeCareTimer.StatusUpdated += OnEyeCareStatusUpdated;
 
         // 1. 初始化 Windows 系统托盘常驻图标 (NotifyIcon)
         InitSystemTray();
@@ -1072,6 +1084,132 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    
+    #region 腾讯电脑管家风格护眼模式与科学用眼健康闹钟
+
+    private void OnRestBreakRequired(int breakMinutes)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_activeBreakWindow != null && _activeBreakWindow.IsVisible) return;
+
+            _activeBreakWindow = new EyeCareBreakWindow(breakMinutes);
+            _activeBreakWindow.RestCompleted += () => _eyeCareTimer.NotifyRestCompleted();
+            _activeBreakWindow.RestSnoozed += () => _eyeCareTimer.Snooze(5);
+            _activeBreakWindow.Show();
+        });
+    }
+
+    private void OnCurfewLockRequired(string promptText)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_activeCurfewWindow != null && _activeCurfewWindow.IsVisible) return;
+
+            _activeCurfewWindow = new CurfewLockWindow(_authUseCase, promptText);
+            _activeCurfewWindow.TemporaryUnlocked += () => _eyeCareTimer.Snooze(30);
+            _activeCurfewWindow.Show();
+        });
+    }
+
+    private void OnEyeCareStatusUpdated(int continuousMinutes, int remainingMinutes)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (TxtEyeCareSubtitle != null)
+            {
+                TxtEyeCareSubtitle.Text = $"滤减蓝光呵护双眸，定时提醒科学用眼 (当前已用眼 {continuousMinutes} 分钟，距离下次远眺还有 {remainingMinutes} 分钟)";
+            }
+            if (TxtRestCountdown != null)
+            {
+                TxtRestCountdown.Text = remainingMinutes > 0 ? $"还剩 {remainingMinutes} 分钟" : "建议远眺";
+            }
+        });
+    }
+
+    private void BtnToggleEyeCare_Click(object sender, RoutedEventArgs e)
+    {
+        if (_blueLightFilter.IsFilterActive)
+        {
+            _blueLightFilter.RestoreDefault();
+            UpdateEyeCareUiState(false);
+        }
+        else
+        {
+            bool ok = _blueLightFilter.ApplyWarmFilter(_filterWarmthPercent);
+            UpdateEyeCareUiState(ok);
+        }
+    }
+
+    private void UpdateEyeCareUiState(bool isActive)
+    {
+        if (isActive)
+        {
+            TxtEyeCareTitle.Text = "护眼模式保护中 · 蓝光滤减已生效";
+            BadgeEyeCareActive.Visibility = Visibility.Visible;
+            BtnToggleEyeCare.Content = "🌿 调节/关闭保护";
+            BtnToggleEyeCare.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
+            BtnPolicyToggleEyeCare.Content = "🌿 护眼保护运行中 (点击关闭)";
+            BtnPolicyToggleEyeCare.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
+        }
+        else
+        {
+            TxtEyeCareTitle.Text = "开启护眼模式，定制健康闹钟";
+            BadgeEyeCareActive.Visibility = Visibility.Collapsed;
+            BtnToggleEyeCare.Content = "✨ 开启保护";
+            BtnToggleEyeCare.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
+            BtnPolicyToggleEyeCare.Content = "✨ 开启护眼模式";
+            BtnPolicyToggleEyeCare.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
+        }
+    }
+
+    private void BtnQuickTakeBreak_Click(object sender, RoutedEventArgs e)
+    {
+        OnRestBreakRequired(_eyeCareTimer.RestDurationMinutes);
+    }
+
+    private void SliderEyeCareWarmth_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        _filterWarmthPercent = (int)e.NewValue;
+        if (TxtWarmthPercent != null)
+        {
+            string desc = _filterWarmthPercent switch
+            {
+                < 55 => $"{_filterWarmthPercent}% 轻柔过滤",
+                < 80 => $"{_filterWarmthPercent}% 经典护眼 (推荐)",
+                _ => $"{_filterWarmthPercent}% 深度纸质/夜间"
+            };
+            TxtWarmthPercent.Text = desc;
+        }
+
+        if (_blueLightFilter != null && _blueLightFilter.IsFilterActive)
+        {
+            _blueLightFilter.ApplyWarmFilter(_filterWarmthPercent);
+        }
+    }
+
+    private void ComboRestInterval_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_eyeCareTimer == null || ComboRestInterval == null) return;
+        int interval = ComboRestInterval.SelectedIndex switch
+        {
+            0 => 30,
+            1 => 45,
+            2 => 60,
+            _ => 45
+        };
+        _eyeCareTimer.RestIntervalMinutes = interval;
+    }
+
+    private void ComboRestDuration_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_eyeCareTimer == null || ComboRestDuration == null) return;
+        int duration = ComboRestDuration.SelectedIndex == 0 ? 3 : 5;
+        _eyeCareTimer.RestDurationMinutes = duration;
+    }
+
+    #endregion
+
     protected override void OnClosed(EventArgs e)
     {
 
