@@ -61,7 +61,7 @@ if ($isccCmd) {
 }
 
 if ($isccPath -and (Test-Path $isccPath)) {
-    & $isccPath "$PSScriptRoot\installer\ChildGuard.iss"
+    & $isccPath "/DMyAppVersion=$Version" "/DMyAppSourceDir=$publishDir" "/DMyOutputBaseFilename=ChildGuard-v$Version-Setup" "$PSScriptRoot\installer\ChildGuard.iss"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[WARN] Inno Setup compilation failed or returned non-zero." -ForegroundColor Yellow
     }
@@ -116,3 +116,4 @@ Get-Item $setupExe, $portableZip -ErrorAction SilentlyContinue | ForEach-Object 
     Write-Host ""
 }
 Write-Host "[SUCCESS] Release build completed!" -ForegroundColor Green
+
