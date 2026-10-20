@@ -432,13 +432,99 @@
 
                                 <Border Style="{StaticResource KpiCardStyle}">
                                     <StackPanel>
-                                        <TextBlock Text="全系统级不良网站屏蔽 (Hosts 过滤规则)" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
-                                        <TextBlock Text="基于 GitHub 顶级开源成人与涉赌黑名单（StevenBlack），直接在 Windows 底层 Hosts 拦截，Chrome/Edge/Firefox 全局生效，隐身无痕模式无法穿透。"
-                                                   TextWrapping="Wrap" FontSize="12" Foreground="#7D8590" Margin="0,0,0,14"/>
-                                        <StackPanel Orientation="Horizontal">
-                                            <ui:Button x:Name="BtnToggleWebFilter" Content="一键激活网站屏蔽" Appearance="Primary" Click="BtnToggleWebFilter_Click" Margin="0,0,14,0"/>
-                                            <TextBlock x:Name="TxtWebFilterStatus" Text="状态: 未激活" VerticalAlignment="Center" Foreground="#D29922"/>
-                                        </StackPanel>
+                                        <!-- 头部标题与控制开关 -->
+                                        <Grid Margin="0,0,0,14">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="全系统级不良网站与自定义网址屏蔽 (Hosts 过滤规则)" FontSize="14.5" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                                <TextBlock Text="基于 Windows 底层 Hosts 拦截，Chrome/Edge/Firefox 及所有浏览器全局生效，隐身无痕模式无法穿透。"
+                                                           TextWrapping="Wrap" FontSize="12" Foreground="#7D8590"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                                                <TextBlock x:Name="TxtWebFilterStatus" Text="状态: 未激活" VerticalAlignment="Center" Foreground="#D29922" Margin="0,0,14,0"/>
+                                                <ui:Button x:Name="BtnToggleWebFilter" Content="一键激活网站屏蔽" Appearance="Primary" Click="BtnToggleWebFilter_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- 添加自定义屏蔽网站区域 -->
+                                        <Border Background="#141820" CornerRadius="10" Padding="14,12" Margin="0,0,0,16" BorderBrush="#262C36" BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Text="➕ 添加要拦截的网站域名 (需家长安全核验)" FontSize="12.5" FontWeight="SemiBold" Foreground="#E6EDF3" Margin="0,0,0,8"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="12" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="InputNewBlockedDomain" Grid.Column="0" Height="36"
+                                                             Background="#0D1117" Foreground="#FFFFFF" BorderBrush="#30363D"
+                                                             VerticalContentAlignment="Center" Padding="10,0"
+                                                             KeyDown="InputNewBlockedDomain_KeyDown"
+                                                             ToolTip="输入网址域名，例如: bilibili.com 或 douyin.com 或 tieba.baidu.com"/>
+                                                    <ui:Button Grid.Column="2" Content="+ 授权添加屏蔽" Appearance="Primary" Height="36" Padding="18,0"
+                                                               Click="BtnAddBlockedDomain_Click"/>
+                                                </Grid>
+                                                <TextBlock Text="💡 提示：输入网址域名（如 bilibili.com），系统将自动将其及二级域名加入全系统底层 Hosts 阻断列表。"
+                                                           FontSize="11" Foreground="#6E7681" Margin="2,6,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- 当前屏蔽清单与分类统计 -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="📋 当前拦截规则清单" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,10,0"/>
+                                                <TextBlock x:Name="TxtRuleCountStats" Text="(加载中...)" FontSize="11.5" Foreground="#7D8590" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button x:Name="BtnFilterAll" Content="全部" FontSize="11" Height="26" Padding="10,0" Background="#21262D" Foreground="#FFFFFF" BorderThickness="0" Margin="0,0,6,0" Click="BtnFilterCategory_Click" Tag="All"/>
+                                                <Button x:Name="BtnFilterCustom" Content="仅看家长自定义" FontSize="11" Height="26" Padding="10,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Margin="0,0,6,0" Click="BtnFilterCategory_Click" Tag="Custom"/>
+                                                <Button x:Name="BtnFilterDefault" Content="仅看内置通用防护" FontSize="11" Height="26" Padding="10,0" Background="Transparent" Foreground="#8B949E" BorderThickness="0" Click="BtnFilterCategory_Click" Tag="Default"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- 规则卡片滚动列表 -->
+                                        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                                            <ItemsControl x:Name="ListBlockedRules">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#12161E" BorderBrush="#21262D" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="🌐" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                                                        <TextBlock Text="{Binding Domain}" FontSize="13.5" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,10,0"/>
+                                                                        <Border Background="{Binding BadgeBg}" CornerRadius="4" Padding="6,1,6,2">
+                                                                            <TextBlock Text="{Binding BadgeText}" FontSize="10.5" Foreground="{Binding BadgeColor}" FontWeight="SemiBold"/>
+                                                                        </Border>
+                                                                    </StackPanel>
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="{Binding Category}" FontSize="11" Foreground="#7D8590" Margin="0,0,12,0"/>
+                                                                        <TextBlock Text="🟢 底层阻断生效中" FontSize="11" Foreground="#3FB950"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                                <ui:Button Grid.Column="2" Content="🗑️ 移除" Appearance="Danger" Height="28" Padding="12,0" FontSize="11.5"
+                                                                           VerticalAlignment="Center"
+                                                                           Visibility="{Binding DeleteButtonVisibility}"
+                                                                           Tag="{Binding Domain}"
+                                                                           Click="BtnDeleteRule_Click"/>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -597,6 +683,48 @@
                         </Grid.ColumnDefinitions>
                         <ui:Button Grid.Column="0" Content="取消" Appearance="Secondary" Height="36" HorizontalAlignment="Stretch" Click="BtnCancelExit_Click"/>
                         <ui:Button Grid.Column="2" Content="验证并退出" Appearance="Danger" Height="36" HorizontalAlignment="Stretch" Click="BtnConfirmExit_Click"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <!-- 模态框 3: 家长敏感操作安全核验 (修改网站屏蔽/黑名单/策略) -->
+            <Border x:Name="ModalParentActionAuth" Visibility="Collapsed"
+                    Width="460" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#16191F" BorderBrush="#2D3B31" BorderThickness="1"
+                    CornerRadius="14" Padding="28,26">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" Color="#000000" Opacity="0.85" ShadowDepth="8" />
+                </Border.Effect>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <Border Background="#1C3827" CornerRadius="8" Width="38" Height="38" Margin="0,0,12,0">
+                            <TextBlock Text="🔐" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="家长身份安全核验" FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
+                            <TextBlock Text="防止未成年人擅自篡改或停用保护策略" FontSize="11.5" Foreground="#7D8590"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Background="#12151B" CornerRadius="8" Padding="12,10" Margin="0,0,0,16">
+                        <TextBlock x:Name="TxtParentActionPrompt" Text="正在执行敏感策略修改..."
+                                   FontSize="12.5" FontWeight="SemiBold" Foreground="#58A6FF" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <TextBlock Text="请输入家长管理密码 (或输入手机验证器 6 位动态验证码):"
+                               FontSize="12" Foreground="#C9D1D9" Margin="0,0,0,6"/>
+                    <PasswordBox x:Name="InputParentActionPassword" Height="36" Margin="0,0,0,10"
+                                 Background="#0D1117" Foreground="#FFFFFF" BorderBrush="#30363D"
+                                 KeyDown="InputParentActionPassword_KeyDown"/>
+                    <TextBlock x:Name="TxtParentActionError" Text="" FontSize="12" Foreground="#FF7B72" Margin="0,0,0,14" TextWrapping="Wrap"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button Grid.Column="0" Content="取消操作" Appearance="Secondary" Height="36" HorizontalAlignment="Stretch" Click="BtnCancelParentAction_Click"/>
+                        <ui:Button Grid.Column="2" Content="确认授权并执行" Appearance="Primary" Height="36" HorizontalAlignment="Stretch" Click="BtnConfirmParentAction_Click"/>
                     </Grid>
                 </StackPanel>
             </Border>

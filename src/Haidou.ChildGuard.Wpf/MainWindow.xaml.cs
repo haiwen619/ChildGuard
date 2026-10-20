@@ -51,6 +51,10 @@ public partial class MainWindow : FluentWindow
 
     public ObservableCollection<UsageItemViewModel> TodayUsageList { get; } = new();
     public ObservableCollection<ActivitySessionDto> ActivityList { get; } = new();
+    public ObservableCollection<BlockedRuleItemViewModel> BlockedRuleList { get; } = new();
+    private List<BlockedRuleItemViewModel> _allCachedRules = new();
+    private string _currentRuleCategoryFilter = "All";
+    private Func<System.Threading.Tasks.Task>? _pendingParentAuthorizedAction;
 
     public MainWindow()
     {
@@ -81,7 +85,8 @@ public partial class MainWindow : FluentWindow
         _heartbeatEngine.SessionFlushed += OnSessionFlushed;
 
         InitTotp();
-        UpdateWebFilterStatusDisplay();
+        ListBlockedRules.ItemsSource = BlockedRuleList;
+        RefreshWebFilterRulesDisplay();
 
         _hookAdapter.Start();
         _ = LoadDailyReportAsync();
@@ -589,44 +594,183 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private async void BtnToggleWebFilter_Click(object sender, RoutedEventArgs e)
+        #region 家长敏感操作安全核验
+
+    private void RequestParentAuthorization(string prompt, Func<System.Threading.Tasks.Task> authorizedAction)
     {
-        bool isActive = _webFilterAdapter.IsFilterActive();
-        if (isActive)
+        _pendingParentAuthorizedAction = authorizedAction;
+        TxtParentActionPrompt.Text = "操作目标: " + prompt;
+        TxtParentActionError.Text = string.Empty;
+        InputParentActionPassword.Password = string.Empty;
+
+        ModalHost.Visibility = Visibility.Visible;
+        ModalParentActionAuth.Visibility = Visibility.Visible;
+        ModalSetupPassword.Visibility = Visibility.Collapsed;
+        ModalExitAuth.Visibility = Visibility.Collapsed;
+
+        InputParentActionPassword.Focus();
+    }
+
+    private void BtnCancelParentAction_Click(object sender, RoutedEventArgs e)
+    {
+        _pendingParentAuthorizedAction = null;
+        ModalHost.Visibility = Visibility.Collapsed;
+        ModalParentActionAuth.Visibility = Visibility.Collapsed;
+    }
+
+    private async void BtnConfirmParentAction_Click(object sender, RoutedEventArgs e)
+    {
+        await ExecuteParentActionAuthAsync();
+    }
+
+    private async void InputParentActionPassword_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
         {
-            bool removed = await _webFilterAdapter.RemoveFilterAsync();
-            if (removed)
+            await ExecuteParentActionAuthAsync();
+        }
+    }
+
+    private async System.Threading.Tasks.Task ExecuteParentActionAuthAsync()
+    {
+        string input = InputParentActionPassword.Password;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            TxtParentActionError.Text = "请输入家长管理密码或 6 位动态验证码。";
+            return;
+        }
+
+        if (_authUseCase.AuthorizeAction(input))
+        {
+            var action = _pendingParentAuthorizedAction;
+            _pendingParentAuthorizedAction = null;
+            ModalHost.Visibility = Visibility.Collapsed;
+            ModalParentActionAuth.Visibility = Visibility.Collapsed;
+
+            if (action != null)
             {
-                System.Windows.MessageBox.Show("已停用不良网站过滤规则。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                System.Windows.MessageBox.Show("停用失败，修改 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                await action.Invoke();
             }
         }
         else
         {
-            bool applied = await _webFilterAdapter.ApplyFilterAsync();
-            if (applied)
+            TxtParentActionError.Text = "❌ 家长密码错误或动态验证码无效，操作已被安全拒绝！";
+        }
+    }
+
+    #endregion
+
+    #region 全系统级网站屏蔽与规则管理
+
+    private void BtnToggleWebFilter_Click(object sender, RoutedEventArgs e)
+    {
+        bool isActive = _webFilterAdapter.IsFilterActive();
+        string prompt = isActive ? "停用全系统不良网站与网址过滤保护" : "激活全系统不良网站与网址过滤保护";
+
+        RequestParentAuthorization(prompt, async () =>
+        {
+            if (isActive)
             {
-                System.Windows.MessageBox.Show("已成功激活全系统不良网站屏蔽！底层 Hosts 生效，全浏览器无痕模式无法穿透。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+                bool removed = await _webFilterAdapter.RemoveFilterAsync();
+                if (removed)
+                {
+                    System.Windows.MessageBox.Show("已停用不良网站过滤规则。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("停用失败，修改 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
             else
             {
-                System.Windows.MessageBox.Show("激活失败，修改系统 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                bool applied = await _webFilterAdapter.ApplyFilterAsync();
+                if (applied)
+                {
+                    System.Windows.MessageBox.Show("已成功激活全系统不良网站屏蔽！底层 Hosts 生效，全浏览器无痕模式无法穿透。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("激活失败，修改系统 Hosts 文件需要以管理员权限运行程序。", "权限不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
-        }
-        UpdateWebFilterStatusDisplay();
+            RefreshWebFilterRulesDisplay();
+        });
     }
 
-    private void UpdateWebFilterStatusDisplay()
+    private void BtnAddBlockedDomain_Click(object sender, RoutedEventArgs e)
+    {
+        string raw = InputNewBlockedDomain.Text.Trim();
+        string domain = HostsWebFilterAdapter.NormalizeDomain(raw);
+
+        if (string.IsNullOrWhiteSpace(domain) || !domain.Contains('.'))
+        {
+            System.Windows.MessageBox.Show("请输入合法的网址域名（例如: bilibili.com 或 douyin.com）", "输入格式有误", MessageBoxButton.OK, MessageBoxImage.Warning);
+            InputNewBlockedDomain.Focus();
+            return;
+        }
+
+        RequestParentAuthorization($"添加自定义屏蔽网站: {domain}", async () =>
+        {
+            bool success = await _webFilterAdapter.AddCustomDomainAsync(domain);
+            if (success)
+            {
+                InputNewBlockedDomain.Clear();
+                RefreshWebFilterRulesDisplay();
+                System.Windows.MessageBox.Show($"已成功将【{domain}】加入全系统底层屏蔽列表！", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show($"该域名已在屏蔽列表中，无需重复添加。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        });
+    }
+
+    private void InputNewBlockedDomain_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            BtnAddBlockedDomain_Click(sender, e);
+        }
+    }
+
+    private void BtnDeleteRule_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string domain) return;
+
+        RequestParentAuthorization($"从拦截清单中移除: {domain}", async () =>
+        {
+            bool success = await _webFilterAdapter.RemoveCustomDomainAsync(domain);
+            if (success)
+            {
+                RefreshWebFilterRulesDisplay();
+                System.Windows.MessageBox.Show($"已解除对【{domain}】的系统级拦截。", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        });
+    }
+
+    private void RefreshWebFilterRulesDisplay()
     {
         bool isActive = _webFilterAdapter.IsFilterActive();
+        var rules = _webFilterAdapter.GetAllRules();
+
+        _allCachedRules = rules.Select(r => new BlockedRuleItemViewModel
+        {
+            Domain = r.Domain,
+            Category = r.Category,
+            IsCustom = r.IsCustom
+        }).ToList();
+
+        int customCount = _allCachedRules.Count(r => r.IsCustom);
+        int defaultCount = _allCachedRules.Count(r => !r.IsCustom);
+        int totalCount = _allCachedRules.Count;
+
+        TxtRuleCountStats.Text = $"共 {totalCount} 条规则 (内置 {defaultCount} 条, 自定义 {customCount} 条)";
+
         if (isActive)
         {
             BtnToggleWebFilter.Content = "停用网站屏蔽";
             BtnToggleWebFilter.Appearance = ControlAppearance.Secondary;
-            TxtWebFilterStatus.Text = "状态: 🛡️ 已激活全系统屏蔽 (保护中)";
+            TxtWebFilterStatus.Text = $"状态: 🛡️ 已激活全系统屏蔽 (保护中·共 {totalCount} 条规则生效)";
             TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
         }
         else
@@ -636,7 +780,50 @@ public partial class MainWindow : FluentWindow
             TxtWebFilterStatus.Text = "状态: ⚠️ 未激活 (未屏蔽不良网站)";
             TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.Orange;
         }
+
+        ApplyRulesFilter();
     }
+
+    private void BtnFilterCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
+        _currentRuleCategoryFilter = tag;
+
+        var bc = new System.Windows.Media.BrushConverter();
+        var activeBg = (System.Windows.Media.Brush)bc.ConvertFrom("#21262D")!;
+        var inactiveBg = System.Windows.Media.Brushes.Transparent;
+        var activeFg = System.Windows.Media.Brushes.White;
+        var inactiveFg = (System.Windows.Media.Brush)bc.ConvertFrom("#8B949E")!;
+
+        BtnFilterAll.Background = tag == "All" ? activeBg : inactiveBg;
+        BtnFilterAll.Foreground = tag == "All" ? activeFg : inactiveFg;
+
+        BtnFilterCustom.Background = tag == "Custom" ? activeBg : inactiveBg;
+        BtnFilterCustom.Foreground = tag == "Custom" ? activeFg : inactiveFg;
+
+        BtnFilterDefault.Background = tag == "Default" ? activeBg : inactiveBg;
+        BtnFilterDefault.Foreground = tag == "Default" ? activeFg : inactiveFg;
+
+        ApplyRulesFilter();
+    }
+
+    private void ApplyRulesFilter()
+    {
+        BlockedRuleList.Clear();
+        var filtered = _currentRuleCategoryFilter switch
+        {
+            "Custom" => _allCachedRules.Where(r => r.IsCustom),
+            "Default" => _allCachedRules.Where(r => !r.IsCustom),
+            _ => _allCachedRules
+        };
+
+        foreach (var item in filtered)
+        {
+            BlockedRuleList.Add(item);
+        }
+    }
+
+    #endregion
 
     private void BtnNav_Click(object sender, RoutedEventArgs e)
     {
@@ -700,6 +887,18 @@ public partial class MainWindow : FluentWindow
 
         base.OnClosed(e);
     }
+}
+
+
+public class BlockedRuleItemViewModel
+{
+    public string Domain { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public bool IsCustom { get; set; }
+    public string BadgeText => IsCustom ? "👤 家长自定义" : "🛡️ 内置通用防护";
+    public string BadgeBg => IsCustom ? "#1F3827" : "#1B2A3D";
+    public string BadgeColor => IsCustom ? "#3FB950" : "#58A6FF";
+    public Visibility DeleteButtonVisibility => IsCustom ? Visibility.Visible : Visibility.Collapsed;
 }
 
 public class UsageItemViewModel

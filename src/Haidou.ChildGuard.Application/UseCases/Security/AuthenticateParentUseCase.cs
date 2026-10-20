@@ -57,6 +57,12 @@ public class AuthenticateParentUseCase
     /// <summary>
     /// 家长退出授权核销：优先匹配密码，备选匹配 6 位离线 TOTP 验证码
     /// </summary>
+        /// <summary>
+    /// 家长敏感操作安全核销（修改网站黑名单、添加/删除规则、开关系统级拦截）
+    /// 优先匹配家长主密码，备选匹配 6 位离线 TOTP 验证码
+    /// </summary>
+    public bool AuthorizeAction(string passwordOrTotp) => AuthorizeExit(passwordOrTotp);
+
     public bool AuthorizeExit(string passwordOrTotp)
     {
         if (string.IsNullOrWhiteSpace(passwordOrTotp)) return false;
