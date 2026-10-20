@@ -9,9 +9,9 @@ Start-Sleep -Seconds 1
 
 Write-Host "[2/3] Building latest Haidou.ChildGuard.Wpf..." -ForegroundColor Yellow
 dotnet build src/Haidou.ChildGuard.Wpf/Haidou.ChildGuard.Wpf.csproj -c Debug
-if ( -eq 0) {
+if ($LASTEXITCODE -eq 0) {
     Write-Host "[3/3] Launching Haidou.ChildGuard.Wpf.exe..." -ForegroundColor Green
-    $binDir = "$PSScriptRoot\src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows10.0.19041.0"
+    $binDir = "$PSScriptRoot\src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows"
     $exe = Join-Path $binDir "Haidou.ChildGuard.Wpf.exe"
     Start-Process -FilePath $exe -WorkingDirectory $binDir
     Write-Host ""
@@ -19,3 +19,4 @@ if ( -eq 0) {
 } else {
     Write-Host "[ERROR] Build failed." -ForegroundColor Red
 }
+

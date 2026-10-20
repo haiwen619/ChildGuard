@@ -1,13 +1,13 @@
 #ifndef MyAppVersion
-#define MyAppVersion "1.0.4"
+#define MyAppVersion "1.0.5"
 #endif
 
 #ifndef MyAppSourceDir
-#define MyAppSourceDir "..\publish\ChildGuard-v1.0.4-win-x64"
+#define MyAppSourceDir "..\publish\ChildGuard-v1.0.5-win-x64"
 #endif
 
 #ifndef MyOutputBaseFilename
-#define MyOutputBaseFilename "ChildGuard-v1.0.4-Setup"
+#define MyOutputBaseFilename "ChildGuard-v1.0.5-Setup"
 #endif
 
 [Setup]
@@ -73,4 +73,5 @@ begin
   ShellExec('open', 'taskkill.exe', '/F /IM Haidou.ChildGuard.Wpf.exe /IM Haidou.Watchdog.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
   Result := True;
 end;
+
 

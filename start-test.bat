@@ -21,7 +21,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [3/3] Starting Haidou.ChildGuard.Wpf.exe...
-set "BIN_DIR=%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows10.0.19041.0"
+set "BIN_DIR=%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows"
 cd /d "%BIN_DIR%"
 start "" "Haidou.ChildGuard.Wpf.exe"
 
@@ -33,3 +33,4 @@ echo   - Double-click the green shield tray icon to restore.
 echo.
 ping 127.0.0.1 -n 4 >nul
 exit /b 0
+
