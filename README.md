@@ -1,6 +1,11 @@
-# 守护星 (OpenGuardian) - Windows 青少年健康护航与本地数字监护系统
+﻿# 守护星 (OpenGuardian) - Windows 青少年健康护航与本地数字监护系统
 > **项目代号**：`ETJGJH` (儿童健康成长与数码使用引导计划)  
-> **项目定位**：100% 纯本地、无商业广告、零隐私上云的开源公益级 Windows 终端监护与数字健康软件。
+> **项目定位**：100% 纯本地、无商业广告、零隐私上云的开源公益级 Windows 终端监护与数字健康软件。  
+> 
+> 📦 **安装包与绿色版下载**：  
+> 前往 [GitHub Releases 最新发布页](https://github.com/haiwen619/ChildGuard/releases/latest) 直接获取：  
+> - **Windows 官方安装包（推荐）**：`ChildGuard-v1.0.0-Setup.exe` —— 向导式一键安装，自动创建桌面与开始菜单图标，支持控制面板一键卸载。  
+> - **绿色便携版（免安装）**：`ChildGuard-v1.0.0-win-x64-Portable.zip` —— 纯净解压即用，内置完整独立运行时，零环境依赖。
 
 ---
 
