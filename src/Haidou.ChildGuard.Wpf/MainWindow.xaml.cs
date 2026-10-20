@@ -156,6 +156,14 @@ public partial class MainWindow : FluentWindow
 
     private void FluentWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        try
+        {
+            if (Environment.OSVersion.Version.Major >= 10 && Environment.OSVersion.Version.Build >= 22000)
+            {
+                WindowBackdropType = WindowBackdropType.Mica;
+            }
+        }
+        catch {}
 
         RestoreAndBringToFront();
 
@@ -1267,6 +1275,8 @@ public class ScreenAuditItemViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged = delegate { };
 }
+
+
 
 
 

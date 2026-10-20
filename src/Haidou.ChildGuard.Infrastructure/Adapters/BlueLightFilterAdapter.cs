@@ -5,11 +5,11 @@ namespace Haidou.ChildGuard.Infrastructure.Adapters;
 
 public sealed class BlueLightFilterAdapter : IDisposable
 {
-    [DllImport("gdi32.dll")]
-    private static extern bool SetDeviceGammaRamp(IntPtr hDC, ref RAMP lpRamp);
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern unsafe bool SetDeviceGammaRamp(IntPtr hDC, void* lpRamp);
 
-    [DllImport("gdi32.dll")]
-    private static extern bool GetDeviceGammaRamp(IntPtr hDC, ref RAMP lpRamp);
+    [DllImport("gdi32.dll", SetLastError = true)]
+    private static extern unsafe bool GetDeviceGammaRamp(IntPtr hDC, void* lpRamp);
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetDC(IntPtr hWnd);
@@ -17,101 +17,116 @@ public sealed class BlueLightFilterAdapter : IDisposable
     [DllImport("user32.dll")]
     private static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public struct RAMP
+    // 严苛保证纯连续 1536 字节平坦结构，零托管堆引用，杜绝 CLR Marshaller 堆破坏 (0x80131506)
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct RAMP
     {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public ushort[] Red;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public ushort[] Green;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
-        public ushort[] Blue;
+        public fixed ushort Red[256];
+        public fixed ushort Green[256];
+        public fixed ushort Blue[256];
     }
 
     private readonly object _syncLock = new();
-    private RAMP? _originalRamp;
-    private bool _isFilterActive;
+    private RAMP _originalRamp;
+    private bool _hasOriginalRamp = false;
+    private bool _isSupported = true;
+    private bool _isFilterActive = false;
 
     public bool IsFilterActive => _isFilterActive;
+    public bool IsSupported => _isSupported;
 
     public BlueLightFilterAdapter()
     {
-        SaveOriginalRamp();
+        // 构造时不强行调用非托管硬件接口，避免在虚拟机或无显卡驱动环境下启动即崩死
     }
 
-    private void SaveOriginalRamp()
+    private unsafe bool EnsureOriginalRamp()
     {
+        if (_hasOriginalRamp) return true;
+        if (!_isSupported) return false;
+
         try
         {
             IntPtr hdc = GetDC(IntPtr.Zero);
-            if (hdc != IntPtr.Zero)
+            if (hdc == IntPtr.Zero)
             {
-                var ramp = new RAMP
-                {
-                    Red = new ushort[256],
-                    Green = new ushort[256],
-                    Blue = new ushort[256]
-                };
+                _isSupported = false;
+                return false;
+            }
 
-                if (GetDeviceGammaRamp(hdc, ref ramp))
+            try
+            {
+                fixed (RAMP* pRamp = &_originalRamp)
                 {
-                    _originalRamp = ramp;
+                    bool ok = GetDeviceGammaRamp(hdc, pRamp);
+                    if (ok)
+                    {
+                        _hasOriginalRamp = true;
+                        return true;
+                    }
+                    else
+                    {
+                        // 显卡驱动或当前显示器不支持硬件 Gamma 调节，标记不支持并优雅退出
+                        _isSupported = false;
+                        return false;
+                    }
                 }
+            }
+            finally
+            {
                 ReleaseDC(IntPtr.Zero, hdc);
             }
         }
-        catch {}
+        catch
+        {
+            _isSupported = false;
+            return false;
+        }
     }
 
     /// <summary>
-    /// 开启滤蓝光暖色温护眼模式 (strength: 1 ~ 100, 推荐 70)
+    /// 开启滤蓝光暖色温护眼模式 (strength: 10 ~ 100, 推荐 70)
     /// </summary>
-    public bool ApplyWarmFilter(int strengthPercent = 70)
+    public unsafe bool ApplyWarmFilter(int strengthPercent = 70)
     {
         lock (_syncLock)
         {
+            if (!EnsureOriginalRamp()) return false;
+
             try
             {
                 IntPtr hdc = GetDC(IntPtr.Zero);
                 if (hdc == IntPtr.Zero) return false;
 
-                if (_originalRamp == null)
+                try
                 {
-                    SaveOriginalRamp();
+                    double factor = Math.Clamp(strengthPercent, 10, 100) / 100.0;
+                    double blueScale = 1.0 - (0.42 * factor);
+                    double greenScale = 1.0 - (0.10 * factor);
+                    double redScale = 1.0;
+
+                    RAMP newRamp;
+                    for (int i = 0; i < 256; i++)
+                    {
+                        int baseVal = i * 256;
+                        if (baseVal > 65535) baseVal = 65535;
+
+                        newRamp.Red[i] = (ushort)Math.Clamp((int)(baseVal * redScale), 0, 65535);
+                        newRamp.Green[i] = (ushort)Math.Clamp((int)(baseVal * greenScale), 0, 65535);
+                        newRamp.Blue[i] = (ushort)Math.Clamp((int)(baseVal * blueScale), 0, 65535);
+                    }
+
+                    bool result = SetDeviceGammaRamp(hdc, &newRamp);
+                    if (result)
+                    {
+                        _isFilterActive = true;
+                    }
+                    return result;
                 }
-
-                // 强度映射：0 (无过滤) ~ 100 (强过滤深度暖光)
-                // strength 70: Red 保持 1.0, Green 约 0.93, Blue 约 0.72 (过滤 28% 高能短波蓝光)
-                double factor = Math.Clamp(strengthPercent, 10, 100) / 100.0;
-                double blueScale = 1.0 - (0.42 * factor);  // 最低降至 0.58
-                double greenScale = 1.0 - (0.10 * factor); // 最低降至 0.90
-                double redScale = 1.0;
-
-                var newRamp = new RAMP
+                finally
                 {
-                    Red = new ushort[256],
-                    Green = new ushort[256],
-                    Blue = new ushort[256]
-                };
-
-                for (int i = 0; i < 256; i++)
-                {
-                    int baseVal = i * 256;
-                    if (baseVal > 65535) baseVal = 65535;
-
-                    newRamp.Red[i] = (ushort)Math.Clamp((int)(baseVal * redScale), 0, 65535);
-                    newRamp.Green[i] = (ushort)Math.Clamp((int)(baseVal * greenScale), 0, 65535);
-                    newRamp.Blue[i] = (ushort)Math.Clamp((int)(baseVal * blueScale), 0, 65535);
+                    ReleaseDC(IntPtr.Zero, hdc);
                 }
-
-                bool result = SetDeviceGammaRamp(hdc, ref newRamp);
-                ReleaseDC(IntPtr.Zero, hdc);
-
-                if (result)
-                {
-                    _isFilterActive = true;
-                }
-                return result;
             }
             catch
             {
@@ -123,43 +138,47 @@ public sealed class BlueLightFilterAdapter : IDisposable
     /// <summary>
     /// 恢复系统默认原生色温
     /// </summary>
-    public bool RestoreDefault()
+    public unsafe bool RestoreDefault()
     {
         lock (_syncLock)
         {
+            if (!_isFilterActive && !_hasOriginalRamp) return true;
+
             try
             {
                 IntPtr hdc = GetDC(IntPtr.Zero);
                 if (hdc == IntPtr.Zero) return false;
 
-                bool result = false;
-                if (_originalRamp.HasValue)
+                try
                 {
-                    var ramp = _originalRamp.Value;
-                    result = SetDeviceGammaRamp(hdc, ref ramp);
-                }
-                else
-                {
-                    // 构造标准线性色彩 Ramp
-                    var linearRamp = new RAMP
+                    bool result;
+                    if (_hasOriginalRamp)
                     {
-                        Red = new ushort[256],
-                        Green = new ushort[256],
-                        Blue = new ushort[256]
-                    };
-                    for (int i = 0; i < 256; i++)
-                    {
-                        ushort val = (ushort)Math.Min(65535, i * 256);
-                        linearRamp.Red[i] = val;
-                        linearRamp.Green[i] = val;
-                        linearRamp.Blue[i] = val;
+                        fixed (RAMP* pRamp = &_originalRamp)
+                        {
+                            result = SetDeviceGammaRamp(hdc, pRamp);
+                        }
                     }
-                    result = SetDeviceGammaRamp(hdc, ref linearRamp);
-                }
+                    else
+                    {
+                        RAMP linearRamp;
+                        for (int i = 0; i < 256; i++)
+                        {
+                            ushort val = (ushort)Math.Min(65535, i * 256);
+                            linearRamp.Red[i] = val;
+                            linearRamp.Green[i] = val;
+                            linearRamp.Blue[i] = val;
+                        }
+                        result = SetDeviceGammaRamp(hdc, &linearRamp);
+                    }
 
-                ReleaseDC(IntPtr.Zero, hdc);
-                _isFilterActive = false;
-                return result;
+                    _isFilterActive = false;
+                    return result;
+                }
+                finally
+                {
+                    ReleaseDC(IntPtr.Zero, hdc);
+                }
             }
             catch
             {

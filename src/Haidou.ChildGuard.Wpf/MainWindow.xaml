@@ -10,7 +10,7 @@
         MinHeight="680" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica"
+        WindowBackdropType="None"
         Icon="Resources/logo.ico"
         ShowInTaskbar="True"
         Loaded="FluentWindow_Loaded"
@@ -987,4 +987,5 @@
                     </Grid>
     </Grid>
 </ui:FluentWindow>
+
 

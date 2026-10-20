@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Haidou.ChildGuard.Infrastructure.Adapters;
 
@@ -20,8 +19,8 @@ public class WinEventHookAdapter : IDisposable
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextW", CharSet = CharSet.Unicode, SetLastError = false)]
+    private static extern int GetWindowTextW(IntPtr hWnd, [Out] char[] lpString, int nMaxCount);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
@@ -50,19 +49,22 @@ public class WinEventHookAdapter : IDisposable
     {
         if (hwnd == IntPtr.Zero) return;
 
-        var sb = new StringBuilder(512);
-        GetWindowText(hwnd, sb, sb.Capacity);
-        GetWindowThreadProcessId(hwnd, out uint pid);
+        char[] buf = new char[512];
+        int len = GetWindowTextW(hwnd, buf, buf.Length);
+        string title = len > 0 ? new string(buf, 0, len) : string.Empty;
 
-        string title = sb.ToString();
+        GetWindowThreadProcessId(hwnd, out uint pid);
         string processName = "Unknown.exe";
 
-        try
+        if (pid > 0)
         {
-            using var proc = Process.GetProcessById((int)pid);
-            processName = proc.ProcessName + ".exe";
+            try
+            {
+                using var proc = Process.GetProcessById((int)pid);
+                processName = proc.ProcessName + ".exe";
+            }
+            catch { }
         }
-        catch { }
 
         ForegroundChanged?.Invoke(pid, processName, title);
     }

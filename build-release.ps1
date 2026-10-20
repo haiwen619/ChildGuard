@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "1.0.0"
+    [string]$Version = "1.0.1"
 )
 
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -8,7 +8,7 @@ Write-Host "========================================================" -Foregroun
 Write-Host ""
 
 # 1. 杀除可能残留的旧进程
-Write-Host "[1/5] Terminating old processes..." -ForegroundColor Yellow
+Write-Host "[1/6] Terminating old processes..." -ForegroundColor Yellow
 Stop-Process -Name "Haidou.ChildGuard.Wpf", "Haidou.Watchdog" -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 
@@ -24,20 +24,31 @@ if (Test-Path $publishDir) {
 New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
 
 # 3. 执行 dotnet publish (Self-Contained 独立运行，免装任何.NET环境)
-Write-Host "[2/5] Publishing Self-Contained Release (win-x64)..." -ForegroundColor Yellow
+Write-Host "[2/6] Publishing Self-Contained Release (win-x64)..." -ForegroundColor Yellow
 dotnet publish "$PSScriptRoot\src\Haidou.ChildGuard.Wpf\Haidou.ChildGuard.Wpf.csproj" -c Release -r win-x64 --self-contained true -o $publishDir
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Dotnet publish failed." -ForegroundColor Red
     exit 1
 }
 
-# 4. 生成便携版压缩包
-Write-Host "[3/5] Creating Portable ZIP package..." -ForegroundColor Yellow
+# 4. 捆绑关键 Visual C++ 原生运行库 (彻底解决目标机缺少 VC++ Redist 导致的 0x80131506 崩溃)
+Write-Host "[3/6] Bundling Visual C++ native runtime dependencies..." -ForegroundColor Yellow
+$vcDlls = @("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll")
+foreach ($dll in $vcDlls) {
+    $srcDll = Join-Path "$env:SystemRoot\System32" $dll
+    if (Test-Path $srcDll) {
+        Copy-Item -Path $srcDll -Destination $publishDir -Force
+        Write-Host "  -> Bundled: $dll" -ForegroundColor DarkGray
+    }
+}
+
+# 5. 生成便携版压缩包
+Write-Host "[4/6] Creating Portable ZIP package..." -ForegroundColor Yellow
 if (Test-Path $portableZip) { Remove-Item -Force $portableZip }
 Compress-Archive -Path "$publishDir\*" -DestinationPath $portableZip -Force
 
-# 5. 生成 Inno Setup 安装包
-Write-Host "[4/5] Compiling Inno Setup Installer..." -ForegroundColor Yellow
+# 6. 生成 Inno Setup 安装包
+Write-Host "[5/6] Compiling Inno Setup Installer..." -ForegroundColor Yellow
 $isccCmd = Get-Command iscc -ErrorAction SilentlyContinue
 if ($isccCmd) {
     $isccPath = $isccCmd.Source
@@ -58,11 +69,21 @@ if ($isccPath -and (Test-Path $isccPath)) {
     Write-Host "[SKIP] Inno Setup compiler not found in system." -ForegroundColor Yellow
 }
 
-# 6. 生成发布说明 Release Notes
+# 7. 生成发布说明 Release Notes
 $notesContent = @"
-# 🌟 童伴守护 (ChildGuard / 守护星) v$Version 正式版发布
+# 🌟 童伴守护 (ChildGuard / 守护星) v$Version 稳定性加固发布
 
 > 100% 纯本地、无商业广告、零隐私上云的开源公益级 Windows 青少年数字健康与终端监护系统。
+
+---
+
+### 🚀 v$Version 关键修复与兼容性加固
+
+- **全面修复 `0x80131506` 启动闪退问题**：
+  - **捆绑原生 VC++ 运行库**：安装包与便携版已内置 `vcruntime140.dll`、`vcruntime140_1.dll` 与 `msvcp140.dll`，在未安装 VC++ 2015-2022 的裸机 Windows 10/11 上开箱即用；
+  - **硬件 Gamma P/Invoke 内存安全加固**：彻底消除非托管内存越界与堆破坏风险，增加无显卡/虚拟机/老显卡环境优雅降级；
+  - **Windows 10/11 视效自适应**：取消 Win10 下强启 Mica 导致的 DWM 崩溃风险，支持自适应动态启用；
+  - **内置全局崩溃日志保护机制**：遇异常自动拦截并记录于本地 `%LocalAppData%\HaidouChildGuard\logs`，彻底杜绝无声闪退。
 
 ---
 
@@ -77,31 +98,15 @@ $notesContent = @"
 
 ---
 
-### ✨ 核心功能与亮点
+### 🔐 校验和信息 (SHA256)
 
-1. **🛡️ 全系统级不良网站离线屏蔽**
-   - 内置敏感站点黑名单，通过系统底层拦截（Hosts / 本地回环），对 Edge、Chrome、Firefox 等全浏览器及客户端生效；
-   - 敏感网址动态加密存储，界面与运行中严格脱敏，不扩散不良信息；
-   - 严格家长密码防护，防止未成年人绕过或关闭。
-
-2. **👁️ 腾讯电脑管家风格·科学护眼与防沉迷**
-   - **Win32 GDI 硬件级防蓝光色温调节**：3200K（暖柔）至 6500K（自然）可调，退出时色彩 100% 还原；
-   - **健康用眼定时提醒**：连续使用达标（默认 45 分钟）自动唤起 4 步护眼操远涕休息全屏视窗；
-   - **夜间就寝断屏锁屏**：设定就寝时段沉浸全屏锁定，引导良好作息习惯（支持家长密码放行）。
-
-3. **🔍 WinRT 原生离线 OCR 屏幕内容审计**
-   - 调用 Windows 10/11 本地硬件 OCR 引擎，无第三方外挂大模型，0 网络请求；
-   - Aho-Corasick 算法极速检测五大敏感维度（色情低俗、涉赌彩票、代充私服外挂、转账欺诈等）；
-   - 离线 SQLite 安全留存，100% 本地留痕，零隐私泄露。
-
-4. **⚡ 伴生自愈看门狗双进程守护**
-   - ``Haidou.Watchdog.exe`` 与前台协同保活，防止意外退出，守护更持久稳定。
+- 见下方构建生成清单
 "@
 Set-Content -Path $notesFile -Value $notesContent -Encoding UTF8
 
-# 7. 计算 SHA256 与文件信息
+# 8. 计算 SHA256 与文件信息
 Write-Host ""
-Write-Host "[5/5] Release Packages Summary:" -ForegroundColor Green
+Write-Host "[6/6] Release Packages Summary:" -ForegroundColor Green
 Write-Host "========================================================" -ForegroundColor Cyan
 Get-Item $setupExe, $portableZip -ErrorAction SilentlyContinue | ForEach-Object {
     $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
