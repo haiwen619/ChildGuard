@@ -267,28 +267,21 @@ public class HostsWebFilterAdapter
         catch {}
     }
 
-    public List<BlockedRuleModel> GetAllRules()
+    /// <summary>
+    /// 获取当前向前端 UI 暴露的规则清单（遵循未成年人防诱导与动态加密规范，仅暴露家长自定义规则，内置不良域名完全不可见）
+    /// </summary>
+    public List<BlockedRuleModel> GetCustomRulesOnly()
     {
         var result = new List<BlockedRuleModel>();
-
-        // 1. 家长自定义规则
         var custom = GetCustomDomains();
         foreach (var c in custom)
         {
             result.Add(new BlockedRuleModel(c, "👤 家长自定义拦截", true, DateTime.UtcNow));
         }
-
-        // 2. 内置核心分类规则
-        foreach (var r in BuiltinRules)
-        {
-            if (!custom.Contains(r.Domain, StringComparer.OrdinalIgnoreCase))
-            {
-                result.Add(new BlockedRuleModel(r.Domain, r.Category, false, DateTime.UtcNow));
-            }
-        }
-
         return result;
     }
+
+    public List<BlockedRuleModel> GetAllRules() => GetCustomRulesOnly();
 
     public ShieldStatsModel GetStats()
     {
