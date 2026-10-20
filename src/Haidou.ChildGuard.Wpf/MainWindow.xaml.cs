@@ -322,7 +322,7 @@ public partial class MainWindow : FluentWindow
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = watchdogExe,
-                        UseShellExecute = true,
+                        UseShellExecute = false,
                         WorkingDirectory = baseDir,
                         WindowStyle = ProcessWindowStyle.Hidden,
                         CreateNoWindow = true
@@ -1267,5 +1267,6 @@ public class ScreenAuditItemViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged = delegate { };
 }
+
 
 

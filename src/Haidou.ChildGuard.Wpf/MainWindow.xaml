@@ -809,7 +809,7 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <ListView x:Name="ListScreenAudits" Style="{StaticResource ModernListViewStyle}"
+                                    <ListView x:Name="ListScreenAudits" Background="Transparent" BorderThickness="0"
                                               ItemContainerStyle="{StaticResource CardListViewItemStyle}"
                                               MaxHeight="420" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                         <ListView.ItemTemplate>
@@ -987,3 +987,4 @@
                     </Grid>
     </Grid>
 </ui:FluentWindow>
+
