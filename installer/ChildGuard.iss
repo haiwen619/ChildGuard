@@ -1,13 +1,13 @@
 #ifndef MyAppVersion
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.3"
 #endif
 
 #ifndef MyAppSourceDir
-#define MyAppSourceDir "..\publish\ChildGuard-v1.0.0-win-x64"
+#define MyAppSourceDir "..\publish\ChildGuard-v1.0.3-win-x64"
 #endif
 
 #ifndef MyOutputBaseFilename
-#define MyOutputBaseFilename "ChildGuard-v1.0.0-Setup"
+#define MyOutputBaseFilename "ChildGuard-v1.0.3-Setup"
 #endif
 
 [Setup]
@@ -30,12 +30,19 @@ WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\Resources\logo.ico
+CloseApplications=force
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[InstallDelete]
+Type: files; Name: "{app}\coreclr.dll"
+Type: files; Name: "{app}\Haidou.ChildGuard.Wpf.exe"
+Type: files; Name: "{app}\Haidou.Watchdog.exe"
 
 [Files]
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -47,3 +54,22 @@ Name: "{autodesktop}\童伴守护"; Filename: "{app}\Haidou.ChildGuard.Wpf.exe";
 
 [Run]
 Filename: "{app}\Haidou.ChildGuard.Wpf.exe"; Description: "{cm:LaunchProgram,童伴守护}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function InitializeSetup(): Boolean;
+var
+  ErrorCode: Integer;
+begin
+  // 安装前静默终止正在运行的旧进程，确保文件不被锁定占用
+  ShellExec('open', 'taskkill.exe', '/F /IM Haidou.ChildGuard.Wpf.exe /IM Haidou.Watchdog.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+  Result := True;
+end;
+
+function InitializeUninstall(): Boolean;
+var
+  ErrorCode: Integer;
+begin
+  // 卸载前强制终止后台守护进程
+  ShellExec('open', 'taskkill.exe', '/F /IM Haidou.ChildGuard.Wpf.exe /IM Haidou.Watchdog.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
+  Result := True;
+end;

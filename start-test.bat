@@ -10,7 +10,7 @@ echo [1/3] Terminating old processes...
 taskkill /f /im Haidou.ChildGuard.Wpf.exe /im Haidou.Watchdog.exe >nul 2>&1
 ping 127.0.0.1 -n 2 >nul
 
-echo [2/3] Building latest Haidou.ChildGuard.Wpf...
+echo [2/3] Building latest Haidou.ChildGuard.Wpf (.NET 9)...
 dotnet build "src\Haidou.ChildGuard.Wpf\Haidou.ChildGuard.Wpf.csproj" -c Debug
 if %ERRORLEVEL% NEQ 0 (
     echo.
@@ -21,7 +21,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo [3/3] Starting Haidou.ChildGuard.Wpf.exe...
-set "BIN_DIR=%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net10.0-windows10.0.19041.0"
+set "BIN_DIR=%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows10.0.19041.0"
 cd /d "%BIN_DIR%"
 start "" "Haidou.ChildGuard.Wpf.exe"
 

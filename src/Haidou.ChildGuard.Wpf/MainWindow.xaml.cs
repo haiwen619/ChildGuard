@@ -45,7 +45,7 @@ public partial class MainWindow : FluentWindow
         private readonly TotpService _totpService;
 
     private readonly SqliteScreenAuditRepository _auditRepo;
-    private readonly WindowsMediaOcrAdapter _ocrAdapter;
+    private readonly IScreenOcrService _ocrService;
     private readonly AhoCorasickMatcher _keywordMatcher;
     private readonly PerformScreenAuditUseCase _performAuditUseCase;
     private readonly GetScreenAuditsUseCase _getAuditsUseCase;
@@ -110,11 +110,19 @@ public partial class MainWindow : FluentWindow
         _hookAdapter.Start();
         _ = LoadDailyReportAsync();
         _auditRepo = new SqliteScreenAuditRepository(_dbContext);
-        _ocrAdapter = new WindowsMediaOcrAdapter();
+                // 关键：非 MSIX 打包环境（普通桌面 exe）绝对不加载 Windows.Media.Ocr，防止 Windows 10 触发 0xc0000602 FailFast 猝死
+        if (PackageIdentityHelper.HasPackageIdentity())
+        {
+            _ocrService = new WindowsMediaOcrAdapter();
+        }
+        else
+        {
+            _ocrService = new FallbackSafeOcrAdapter();
+        }
         _keywordMatcher = new AhoCorasickMatcher();
 
         var notifService = new WpfSystemNotificationService(() => _notifyIcon);
-        _performAuditUseCase = new PerformScreenAuditUseCase(_ocrAdapter, _keywordMatcher, _auditRepo, notifService);
+        _performAuditUseCase = new PerformScreenAuditUseCase(_ocrService, _keywordMatcher, _auditRepo, notifService);
         _getAuditsUseCase = new GetScreenAuditsUseCase(_auditRepo);
         _ackAuditUseCase = new AcknowledgeScreenAuditUseCase(_auditRepo);
 
@@ -1275,6 +1283,8 @@ public class ScreenAuditItemViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged = delegate { };
 }
+
+
 
 
 
