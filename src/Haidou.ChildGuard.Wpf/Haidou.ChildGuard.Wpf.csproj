@@ -28,8 +28,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>Haidou.ChildGuard.App.Program</StartupObject>
   </PropertyGroup>
 
 </Project>
+
 
 

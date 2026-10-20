@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "1.0.3"
+    [string]$Version = "1.0.4"
 )
 
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -116,5 +116,6 @@ Get-Item $setupExe, $portableZip -ErrorAction SilentlyContinue | ForEach-Object 
     Write-Host ""
 }
 Write-Host "[SUCCESS] Release build completed!" -ForegroundColor Green
+
 
 
