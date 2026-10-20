@@ -20,7 +20,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>Haidou.ChildGuard.App</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -30,3 +30,4 @@
   </PropertyGroup>
 
 </Project>
+

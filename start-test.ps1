@@ -1,4 +1,4 @@
-﻿Write-Host "========================================================" -ForegroundColor Cyan
+Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "  Haidou ChildGuard - Launching Test" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host ""
@@ -11,7 +11,7 @@ Write-Host "[2/3] Building latest Haidou.ChildGuard.Wpf..." -ForegroundColor Yel
 dotnet build src/Haidou.ChildGuard.Wpf/Haidou.ChildGuard.Wpf.csproj -c Debug
 if ( -eq 0) {
     Write-Host "[3/3] Launching Haidou.ChildGuard.Wpf.exe..." -ForegroundColor Green
-    $binDir = "$PSScriptRoot\src\Haidou.ChildGuard.Wpf\bin\Debug\net10.0-windows10.0.19041.0"
+    $binDir = "$PSScriptRoot\src\Haidou.ChildGuard.Wpf\bin\Debug\net9.0-windows10.0.19041.0"
     $exe = Join-Path $binDir "Haidou.ChildGuard.Wpf.exe"
     Start-Process -FilePath $exe -WorkingDirectory $binDir
     Write-Host ""
