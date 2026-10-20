@@ -56,7 +56,20 @@ public class DatabaseContext : IDisposable
                 RestDurationMinutes INTEGER
             );
 
+            CREATE TABLE IF NOT EXISTS ScreenAudits (
+                Id TEXT PRIMARY KEY,
+                Timestamp TEXT,
+                ProcessName TEXT,
+                WindowTitle TEXT,
+                Category INTEGER,
+                RiskLevel INTEGER,
+                MatchedKeywords TEXT,
+                Snippet TEXT,
+                IsAcknowledged INTEGER
+            );
+
             CREATE INDEX IF NOT EXISTS idx_act_time ON Activities(StartTimeUtc);
+            CREATE INDEX IF NOT EXISTS idx_audit_time ON ScreenAudits(Timestamp);
         ";
         cmd.ExecuteNonQuery();
     }

@@ -41,3 +41,15 @@ public record TotpQrResultDto(
     string QrCodePngBase64,
     string OtpAuthUri
 );
+
+public record ScreenAuditRecordDto(
+    string Id,
+    DateTime Timestamp,
+    string ProcessName,
+    string WindowTitle,
+    string CategoryName,
+    string RiskLevelName,
+    string MatchedKeywords,
+    string Snippet,
+    bool IsAcknowledged
+);

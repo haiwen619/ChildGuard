@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Haidou.ChildGuard.Domain.Auditing.Entities;
+
 namespace Haidou.ChildGuard.Application.Interfaces;
 
 public interface ITotpService
@@ -14,4 +18,22 @@ public interface ISystemNotificationService
     void ShowRestBreakAlert(int breakMinutes);
     void ShowCurfewWarning(string message);
     void ShowTimeLimitReachedAlert();
+    void ShowAuditWarningAlert(string categoryName, string appName);
+}
+
+public interface IScreenOcrService
+{
+    Task<string> RecognizeActiveWindowTextAsync();
+}
+
+public sealed record MatchedKeywordResult(
+    string Keyword,
+    SensitiveCategory Category,
+    AuditRiskLevel RiskLevel,
+    string Snippet
+);
+
+public interface ISensitiveKeywordMatcher
+{
+    IReadOnlyList<MatchedKeywordResult> MatchText(string text);
 }

@@ -1,3 +1,5 @@
+using Haidou.ChildGuard.Application.UseCases.Auditing;
+using Haidou.ChildGuard.Application.Interfaces;
 using System.Runtime.InteropServices;
 ﻿using System;
 using System.Collections.ObjectModel;
@@ -40,7 +42,18 @@ public partial class MainWindow : FluentWindow
     private readonly DatabaseContext _dbContext;
     private readonly HostsWebFilterAdapter _webFilterAdapter;
     private readonly LocalCredentialStore _credStore;
-    private readonly TotpService _totpService;
+        private readonly TotpService _totpService;
+
+    private readonly SqliteScreenAuditRepository _auditRepo;
+    private readonly WindowsMediaOcrAdapter _ocrAdapter;
+    private readonly AhoCorasickMatcher _keywordMatcher;
+    private readonly PerformScreenAuditUseCase _performAuditUseCase;
+    private readonly GetScreenAuditsUseCase _getAuditsUseCase;
+    private readonly AcknowledgeScreenAuditUseCase _ackAuditUseCase;
+    private readonly ScreenAuditEngine _auditEngine;
+
+    private bool _isScreenAuditUnlocked = false;
+    public ObservableCollection<ScreenAuditItemViewModel> ScreenAuditList { get; } = new();
 
     private readonly DispatcherTimer _watchdogGuardTimer;
     private Forms.NotifyIcon? _notifyIcon;
@@ -90,6 +103,21 @@ public partial class MainWindow : FluentWindow
 
         _hookAdapter.Start();
         _ = LoadDailyReportAsync();
+        _auditRepo = new SqliteScreenAuditRepository(_dbContext);
+        _ocrAdapter = new WindowsMediaOcrAdapter();
+        _keywordMatcher = new AhoCorasickMatcher();
+
+        var notifService = new WpfSystemNotificationService(() => _notifyIcon);
+        _performAuditUseCase = new PerformScreenAuditUseCase(_ocrAdapter, _keywordMatcher, _auditRepo, notifService);
+        _getAuditsUseCase = new GetScreenAuditsUseCase(_auditRepo);
+        _ackAuditUseCase = new AcknowledgeScreenAuditUseCase(_auditRepo);
+
+        _auditEngine = new ScreenAuditEngine(_performAuditUseCase);
+        _auditEngine.AuditTriggered += OnScreenAuditTriggered;
+        _auditEngine.Start();
+
+        ListScreenAudits.ItemsSource = ScreenAuditList;
+        _ = RefreshAuditBadgeAsync();
 
         // 1. 初始化 Windows 系统托盘常驻图标 (NotifyIcon)
         InitSystemTray();
@@ -806,7 +834,14 @@ public partial class MainWindow : FluentWindow
         PanelApps.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
         PanelPolicy.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
         PanelTotp.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
-        PanelAbout.Visibility = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+                PanelAbout.Visibility = index == 4 ? Visibility.Visible : Visibility.Collapsed;
+
+        BtnNavScreenAudit.Tag = index == 5 ? "Active" : null;
+        PanelScreenAudit.Visibility = index == 5 ? Visibility.Visible : Visibility.Collapsed;
+        if (index == 5 && _isScreenAuditUnlocked)
+        {
+            _ = LoadScreenAuditsAsync();
+        }
     }
 
     private async void BtnSavePolicy_Click(object sender, RoutedEventArgs e)
@@ -835,6 +870,206 @@ public partial class MainWindow : FluentWindow
             return;
         }
         base.OnClosing(e);
+    }
+
+
+    #region 屏幕内容健康审计交互与状态管理
+
+    private void OnScreenAuditTriggered(ScreenAuditRecordDto record)
+    {
+        Dispatcher.Invoke(async () =>
+        {
+            await RefreshAuditBadgeAsync();
+            if (_isScreenAuditUnlocked)
+            {
+                await LoadScreenAuditsAsync();
+            }
+        });
+    }
+
+    private async System.Threading.Tasks.Task RefreshAuditBadgeAsync()
+    {
+        try
+        {
+            int unackCount = await _getAuditsUseCase.GetUnacknowledgedCountAsync();
+            if (unackCount > 0)
+            {
+                BadgeAuditCount.Visibility = Visibility.Visible;
+                TxtAuditBadgeCount.Text = unackCount > 99 ? "99+" : unackCount.ToString();
+            }
+            else
+            {
+                BadgeAuditCount.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch {}
+    }
+
+    private async System.Threading.Tasks.Task LoadScreenAuditsAsync()
+    {
+        try
+        {
+            var audits = await _getAuditsUseCase.GetRecentAuditsAsync(100);
+            ScreenAuditList.Clear();
+            int unack = 0;
+
+            foreach (var a in audits)
+            {
+                if (!a.IsAcknowledged) unack++;
+                (string bg, string fg) = a.RiskLevelName switch
+                {
+                    "Critical" => ("#3D1D1D", "#FF7B72"),
+                    "High" => ("#38241D", "#F0883E"),
+                    "Medium" => ("#38321D", "#D29922"),
+                    _ => ("#1C2838", "#58A6FF")
+                };
+
+                string riskCn = a.RiskLevelName switch
+                {
+                    "Critical" => "高危违规",
+                    "High" => "高风险",
+                    "Medium" => "中度预警",
+                    _ => "低度提示"
+                };
+
+                ScreenAuditList.Add(new ScreenAuditItemViewModel
+                {
+                    Id = a.Id,
+                    TimeFormatted = a.Timestamp.ToLocalTime().ToString("MM-dd HH:mm:ss"),
+                    ProcessName = a.ProcessName,
+                    WindowTitle = a.WindowTitle,
+                    CategoryName = a.CategoryName,
+                    RiskLevelName = riskCn,
+                    RiskBadgeBackground = bg,
+                    RiskBadgeForeground = fg,
+                    MatchedKeywords = a.MatchedKeywords,
+                    Snippet = a.Snippet,
+                    IsAcknowledged = a.IsAcknowledged
+                });
+            }
+
+            TxtAuditTotalCount.Text = $"{audits.Count} 次";
+            TxtAuditPendingCount.Text = $"{unack} 条";
+            TxtEmptyAuditNotice.Visibility = audits.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            await RefreshAuditBadgeAsync();
+        }
+        catch {}
+    }
+
+    private void UpdateAuditLockedViewState()
+    {
+        AuditLockedContainer.Visibility = _isScreenAuditUnlocked ? Visibility.Collapsed : Visibility.Visible;
+        AuditUnlockedContainer.Visibility = _isScreenAuditUnlocked ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void BtnUnlockAuditRecords_Click(object sender, RoutedEventArgs e)
+    {
+        RequestParentAuthorization("解锁审阅未成年人屏幕健康审计日志", async () =>
+        {
+            _isScreenAuditUnlocked = true;
+            UpdateAuditLockedViewState();
+            await LoadScreenAuditsAsync();
+        });
+    }
+
+    private void BtnRelockAuditRecords_Click(object sender, RoutedEventArgs e)
+    {
+        _isScreenAuditUnlocked = false;
+        UpdateAuditLockedViewState();
+    }
+
+    private async void BtnRefreshAuditList_Click(object sender, RoutedEventArgs e)
+    {
+        await LoadScreenAuditsAsync();
+    }
+
+    private async void BtnAcknowledgeAudit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is string auditId)
+        {
+            await _ackAuditUseCase.ExecuteAsync(auditId);
+            await LoadScreenAuditsAsync();
+        }
+    }
+
+    private async void BtnTriggerAuditSample_Click(object sender, RoutedEventArgs e)
+    {
+        BtnTriggerAuditSample.IsEnabled = false;
+        BtnTriggerAuditSample.Content = "⏳ 正在抓样分析中...";
+
+        try
+        {
+            string currentApp = TxtCurrentApp.Text;
+            string currentTitle = TxtCurrentTitle.Text;
+            var result = await _performAuditUseCase.ExecuteAsync(currentApp, currentTitle);
+            if (result != null)
+            {
+                System.Windows.MessageBox.Show(
+                    $"【离线识别完成】命中疑似敏感内容：\n\n类别：{result.CategoryName}\n触发关键词：{result.MatchedKeywords}\n\n已记录至本地安全审计数据库。",
+                    "屏幕内容安全分析报告",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(
+                    "【离线识别完成】当前前台屏幕未检测到任何涉黄、涉赌、外挂、欺诈或暴恐敏感内容，画面安全健康！",
+                    "屏幕内容安全分析报告",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+
+            await RefreshAuditBadgeAsync();
+            if (_isScreenAuditUnlocked)
+            {
+                await LoadScreenAuditsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"检测异常: {ex.Message}", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            BtnTriggerAuditSample.IsEnabled = true;
+            BtnTriggerAuditSample.Content = "⚡ 立即抓样检测";
+        }
+    }
+
+    #endregion
+
+    private sealed class WpfSystemNotificationService : ISystemNotificationService
+    {
+        private readonly Func<Forms.NotifyIcon?> _getNotifyIcon;
+
+        public WpfSystemNotificationService(Func<Forms.NotifyIcon?> getNotifyIcon)
+        {
+            _getNotifyIcon = getNotifyIcon;
+        }
+
+        public void ShowRestBreakAlert(int breakMinutes)
+        {
+            _getNotifyIcon()?.ShowBalloonTip(3000, "护眼休息提醒", $"已连续使用 45 分钟，建议休息远眺 {breakMinutes} 分钟。", Forms.ToolTipIcon.Info);
+        }
+
+        public void ShowCurfewWarning(string message)
+        {
+            _getNotifyIcon()?.ShowBalloonTip(3000, "就寝提醒", message, Forms.ToolTipIcon.Warning);
+        }
+
+        public void ShowTimeLimitReachedAlert()
+        {
+            _getNotifyIcon()?.ShowBalloonTip(3000, "今日时长提醒", "今日允许屏幕时长已达上限，请注意身心休息。", Forms.ToolTipIcon.Warning);
+        }
+
+        public void ShowAuditWarningAlert(string categoryName, string appName)
+        {
+            _getNotifyIcon()?.ShowBalloonTip(
+                4000,
+                "童伴守护健康提醒",
+                $"在 [{appName}] 中检测到疑似【{categoryName}】，已记录本地审计日志。请注意信息安全与身心健康。",
+                Forms.ToolTipIcon.Warning);
+        }
     }
 
     protected override void OnClosed(EventArgs e)
@@ -874,3 +1109,25 @@ public class UsageItemViewModel
     public string IconEmoji { get; set; } = "📱";
     public double ActiveSeconds { get; set; }
 }
+
+public class ScreenAuditItemViewModel : INotifyPropertyChanged
+{
+    public string Id { get; set; } = string.Empty;
+    public string TimeFormatted { get; set; } = string.Empty;
+    public string ProcessName { get; set; } = string.Empty;
+    public string WindowTitle { get; set; } = string.Empty;
+    public string CategoryName { get; set; } = string.Empty;
+    public string RiskLevelName { get; set; } = string.Empty;
+    public string RiskBadgeBackground { get; set; } = "#3D1D1D";
+    public string RiskBadgeForeground { get; set; } = "#FF7B72";
+    public string MatchedKeywords { get; set; } = string.Empty;
+    public string Snippet { get; set; } = string.Empty;
+    public bool IsAcknowledged { get; set; }
+
+    public string StatusText => IsAcknowledged ? "✓ 已审阅" : "⚡ 标记知晓";
+    public string StatusForeground => IsAcknowledged ? "#7D8590" : "#F0883E";
+
+    public event PropertyChangedEventHandler? PropertyChanged = delegate { };
+}
+
+

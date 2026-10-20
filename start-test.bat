@@ -7,7 +7,7 @@ echo [2/2] Building latest Haidou.ChildGuard.Wpf and Haidou.Watchdog...
 dotnet build src/Haidou.ChildGuard.Wpf/Haidou.ChildGuard.Wpf.csproj -c Debug
 if %ERRORLEVEL% EQU 0 (
     echo Starting Haidou.ChildGuard.Wpf in its binary directory...
-    cd /d "%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net10.0-windows"
+    cd /d "%~dp0src\Haidou.ChildGuard.Wpf\bin\Debug\net10.0-windows10.0.19041.0"
     start "" "Haidou.ChildGuard.Wpf.exe"
 ) else (
     echo Build failed.
