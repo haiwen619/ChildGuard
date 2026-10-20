@@ -53,7 +53,9 @@ public partial class MainWindow : FluentWindow
     public ObservableCollection<ActivitySessionDto> ActivityList { get; } = new();
     public ObservableCollection<BlockedRuleItemViewModel> BlockedRuleList { get; } = new();
     private List<BlockedRuleItemViewModel> _allCachedRules = new();
-    private string _currentRuleCategoryFilter = "All";
+    private string _currentRuleCategoryFilter = "Custom";
+    private bool _isBuiltinRulesUnlocked = false;
+    private bool _isMasked = true;
     private Func<System.Threading.Tasks.Task>? _pendingParentAuthorizedAction;
 
     public MainWindow()
@@ -207,6 +209,10 @@ public partial class MainWindow : FluentWindow
             this.WindowState = WindowState.Minimized;
             this.ShowInTaskbar = false;
             this.Hide();
+            // 安全屏障：最小化时自动重新锁闭内置敏感库，防止离开电脑被未成年人窥见
+            _isBuiltinRulesUnlocked = false;
+            _isMasked = true;
+            _currentRuleCategoryFilter = "Custom";
 
             if (showBalloon)
             {
@@ -715,6 +721,7 @@ public partial class MainWindow : FluentWindow
             if (success)
             {
                 InputNewBlockedDomain.Clear();
+                _currentRuleCategoryFilter = "Custom";
                 RefreshWebFilterRulesDisplay();
                 System.Windows.MessageBox.Show($"已成功将【{domain}】加入全系统底层屏蔽列表！", "海豆·童伴守护", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -748,6 +755,92 @@ public partial class MainWindow : FluentWindow
         });
     }
 
+    #region 家长知情同意证书与内置不良库解锁核验
+
+    private void BtnUnlockBuiltinRules_Click(object sender, RoutedEventArgs e)
+    {
+        ChkAgreeSensitiveCert.IsChecked = false;
+        BtnConfirmSensitiveCert.IsEnabled = false;
+        InputSensitiveCertPassword.Password = string.Empty;
+        TxtSensitiveCertError.Text = string.Empty;
+
+        ModalHost.Visibility = Visibility.Visible;
+        ModalSensitiveUnlockCert.Visibility = Visibility.Visible;
+        ModalParentActionAuth.Visibility = Visibility.Collapsed;
+        ModalSetupPassword.Visibility = Visibility.Collapsed;
+        ModalExitAuth.Visibility = Visibility.Collapsed;
+
+        InputSensitiveCertPassword.Focus();
+    }
+
+    private void ChkAgreeSensitiveCert_Click(object sender, RoutedEventArgs e)
+    {
+        BtnConfirmSensitiveCert.IsEnabled = ChkAgreeSensitiveCert.IsChecked == true;
+    }
+
+    private void BtnCancelSensitiveCert_Click(object sender, RoutedEventArgs e)
+    {
+        ModalHost.Visibility = Visibility.Collapsed;
+        ModalSensitiveUnlockCert.Visibility = Visibility.Collapsed;
+    }
+
+    private void InputSensitiveCertPassword_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter && BtnConfirmSensitiveCert.IsEnabled)
+        {
+            BtnConfirmSensitiveCert_Click(sender, e);
+        }
+    }
+
+    private void BtnConfirmSensitiveCert_Click(object sender, RoutedEventArgs e)
+    {
+        if (ChkAgreeSensitiveCert.IsChecked != true)
+        {
+            TxtSensitiveCertError.Text = "请先勾选确认已阅读监护人保密承诺，确认环境安全。";
+            return;
+        }
+
+        string input = InputSensitiveCertPassword.Password;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            TxtSensitiveCertError.Text = "请输入家长管理密码或 6 位动态验证码。";
+            return;
+        }
+
+        if (_authUseCase.AuthorizeAction(input))
+        {
+            _isBuiltinRulesUnlocked = true;
+            _isMasked = true;
+            _currentRuleCategoryFilter = "Default";
+
+            ModalHost.Visibility = Visibility.Collapsed;
+            ModalSensitiveUnlockCert.Visibility = Visibility.Collapsed;
+
+            RefreshWebFilterRulesDisplay();
+            System.Windows.MessageBox.Show("已通过家长知情证书与安全认证！内置防护库已临时解锁。查阅完毕请务必点击【立即锁闭隐藏】。", "安全授权通过", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        else
+        {
+            TxtSensitiveCertError.Text = "❌ 家长密码错误或动态验证码无效，查看申请被拒绝！";
+        }
+    }
+
+    private void BtnLockBuiltinRules_Click(object sender, RoutedEventArgs e)
+    {
+        _isBuiltinRulesUnlocked = false;
+        _isMasked = true;
+        _currentRuleCategoryFilter = "Custom";
+        RefreshWebFilterRulesDisplay();
+    }
+
+    private void BtnToggleMask_Click(object sender, RoutedEventArgs e)
+    {
+        _isMasked = !_isMasked;
+        ApplyRulesFilter();
+    }
+
+    #endregion
+
     private void RefreshWebFilterRulesDisplay()
     {
         bool isActive = _webFilterAdapter.IsFilterActive();
@@ -757,14 +850,15 @@ public partial class MainWindow : FluentWindow
         {
             Domain = r.Domain,
             Category = r.Category,
-            IsCustom = r.IsCustom
+            IsCustom = r.IsCustom,
+            IsMasked = _isMasked
         }).ToList();
 
         int customCount = _allCachedRules.Count(r => r.IsCustom);
         int defaultCount = _allCachedRules.Count(r => !r.IsCustom);
         int totalCount = _allCachedRules.Count;
 
-        TxtRuleCountStats.Text = $"共 {totalCount} 条规则 (内置 {defaultCount} 条, 自定义 {customCount} 条)";
+        TxtRuleCountStats.Text = $"已激活 {totalCount} 条防护规则 (内置不良库 {defaultCount} 条 · {(_isBuiltinRulesUnlocked ? "已临时解锁" : "🔒 深度脱敏封存")}，家长自定义 {customCount} 条)";
 
         if (isActive)
         {
@@ -781,46 +875,70 @@ public partial class MainWindow : FluentWindow
             TxtWebFilterStatus.Foreground = System.Windows.Media.Brushes.Orange;
         }
 
-        ApplyRulesFilter();
-    }
+        // 控制内置库安全卡片与解锁警示条的显隐
+        CardBuiltinShieldLocked.Visibility = _isBuiltinRulesUnlocked ? Visibility.Collapsed : Visibility.Visible;
+        BarBuiltinShieldUnlocked.Visibility = _isBuiltinRulesUnlocked ? Visibility.Visible : Visibility.Collapsed;
 
-    private void BtnFilterCategory_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
-        _currentRuleCategoryFilter = tag;
-
+        // 更新分类筛选按钮样式
         var bc = new System.Windows.Media.BrushConverter();
         var activeBg = (System.Windows.Media.Brush)bc.ConvertFrom("#21262D")!;
         var inactiveBg = System.Windows.Media.Brushes.Transparent;
         var activeFg = System.Windows.Media.Brushes.White;
         var inactiveFg = (System.Windows.Media.Brush)bc.ConvertFrom("#8B949E")!;
 
-        BtnFilterAll.Background = tag == "All" ? activeBg : inactiveBg;
-        BtnFilterAll.Foreground = tag == "All" ? activeFg : inactiveFg;
+        BtnFilterCustom.Background = _currentRuleCategoryFilter == "Custom" ? activeBg : inactiveBg;
+        BtnFilterCustom.Foreground = _currentRuleCategoryFilter == "Custom" ? activeFg : inactiveFg;
 
-        BtnFilterCustom.Background = tag == "Custom" ? activeBg : inactiveBg;
-        BtnFilterCustom.Foreground = tag == "Custom" ? activeFg : inactiveFg;
-
-        BtnFilterDefault.Background = tag == "Default" ? activeBg : inactiveBg;
-        BtnFilterDefault.Foreground = tag == "Default" ? activeFg : inactiveFg;
+        BtnFilterDefault.Background = _currentRuleCategoryFilter == "Default" ? activeBg : inactiveBg;
+        BtnFilterDefault.Foreground = _currentRuleCategoryFilter == "Default" ? activeFg : inactiveFg;
 
         ApplyRulesFilter();
+    }
+
+    private void BtnFilterCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button btn || btn.Tag is not string tag) return;
+
+        if (tag == "Default" && !_isBuiltinRulesUnlocked)
+        {
+            // 点击内置通用防护库，若未解锁，直接引导弹出证书与安全确认
+            BtnUnlockBuiltinRules_Click(sender, e);
+            return;
+        }
+
+        _currentRuleCategoryFilter = tag;
+        RefreshWebFilterRulesDisplay();
     }
 
     private void ApplyRulesFilter()
     {
         BlockedRuleList.Clear();
-        var filtered = _currentRuleCategoryFilter switch
-        {
-            "Custom" => _allCachedRules.Where(r => r.IsCustom),
-            "Default" => _allCachedRules.Where(r => !r.IsCustom),
-            _ => _allCachedRules
-        };
 
+        // 核心安全铁律：未解锁状态下绝对不展示任何内置不良规则
+        IEnumerable<BlockedRuleItemViewModel> filtered;
+        if (!_isBuiltinRulesUnlocked)
+        {
+            filtered = _allCachedRules.Where(r => r.IsCustom);
+        }
+        else
+        {
+            filtered = _currentRuleCategoryFilter switch
+            {
+                "Custom" => _allCachedRules.Where(r => r.IsCustom),
+                "Default" => _allCachedRules.Where(r => !r.IsCustom),
+                _ => _allCachedRules
+            };
+        }
+
+        int count = 0;
         foreach (var item in filtered)
         {
+            item.IsMasked = _isMasked;
             BlockedRuleList.Add(item);
+            count++;
         }
+
+        CardNoCustomRules.Visibility = (!_isBuiltinRulesUnlocked && count == 0) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     #endregion
@@ -895,10 +1013,41 @@ public class BlockedRuleItemViewModel
     public string Domain { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public bool IsCustom { get; set; }
-    public string BadgeText => IsCustom ? "👤 家长自定义" : "🛡️ 内置通用防护";
+    public bool IsMasked { get; set; } = true;
+
+    public string DisplayDomain
+    {
+        get
+        {
+            if (IsCustom || !IsMasked) return Domain;
+            return MaskSensitiveDomain(Domain);
+        }
+    }
+
+    public string BadgeText => IsCustom ? "👤 家长自定义" : "🛡️ 内置通用防护 (封存)";
     public string BadgeBg => IsCustom ? "#1F3827" : "#1B2A3D";
     public string BadgeColor => IsCustom ? "#3FB950" : "#58A6FF";
     public Visibility DeleteButtonVisibility => IsCustom ? Visibility.Visible : Visibility.Collapsed;
+
+    private static string MaskSensitiveDomain(string domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain)) return domain;
+        int dot = domain.LastIndexOf('.');
+        if (dot <= 0) return "***";
+
+        string name = domain.Substring(0, dot);
+        string ext = domain.Substring(dot);
+
+        if (name.StartsWith("www."))
+        {
+            name = name.Substring(4);
+            if (name.Length <= 2) return "www.***" + ext;
+            return $"www.{name[0]}***{name[^1]}{ext}";
+        }
+
+        if (name.Length <= 2) return "***" + ext;
+        return $"{name[0]}***{name[^1]}{ext}";
+    }
 }
 
 public class UsageItemViewModel
