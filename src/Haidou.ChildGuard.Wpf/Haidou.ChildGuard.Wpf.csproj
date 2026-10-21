@@ -29,10 +29,15 @@
     <ApplicationIcon>Resources\logo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>Haidou.ChildGuard.App.Program</StartupObject>
+    <Company>海文娜AI</Company>
+    <Authors>海文娜AI</Authors>
+    <Product>童伴守护 (ChildGuard)</Product>
+    <Description>开源公益级 Windows 青少年数字健康与终端监护系统</Description>
+    <Copyright>Copyright © 2026 海文娜AI. All rights reserved.</Copyright>
+    <AssemblyTitle>童伴守护</AssemblyTitle>
+    <Version>1.0.5</Version>
+    <FileVersion>1.0.5.0</FileVersion>
+    <AssemblyVersion>1.0.5.0</AssemblyVersion>
   </PropertyGroup>
 
 </Project>
-
-
-
-

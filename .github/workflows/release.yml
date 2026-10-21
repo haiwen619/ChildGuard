@@ -58,6 +58,7 @@ jobs:
           files: |
             publish/ChildGuard-*-Setup.exe
             publish/ChildGuard-*-Portable.zip
+            certificates/HaiwenNa-CodeSigning.cer
+            certificates/一键安装海文娜AI受信任证书.bat
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

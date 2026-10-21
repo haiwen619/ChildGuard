@@ -1,4 +1,4 @@
-#ifndef MyAppVersion
+﻿#ifndef MyAppVersion
 #define MyAppVersion "1.0.5"
 #endif
 
@@ -14,7 +14,7 @@
 AppId={{5A8E8D2E-139B-4D88-99AF-7A08B019E0A1}
 AppName=童伴守护 (ChildGuard)
 AppVersion={#MyAppVersion}
-AppPublisher=haiwennaAI
+AppPublisher=海文娜AI
 AppPublisherURL=https://github.com/haiwen619/ChildGuard
 AppSupportURL=https://github.com/haiwen619/ChildGuard/issues
 AppUpdatesURL=https://github.com/haiwen619/ChildGuard/releases
@@ -32,6 +32,13 @@ ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\Resources\logo.ico
 CloseApplications=force
 RestartApplications=no
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany=海文娜AI
+VersionInfoDescription=童伴守护 (ChildGuard) 安装向导
+VersionInfoTextVersion={#MyAppVersion}
+VersionInfoCopyright=Copyright (C) 2026 海文娜AI. All rights reserved.
+VersionInfoProductName=童伴守护 (ChildGuard)
+VersionInfoProductVersion={#MyAppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -73,5 +80,3 @@ begin
   ShellExec('open', 'taskkill.exe', '/F /IM Haidou.ChildGuard.Wpf.exe /IM Haidou.Watchdog.exe', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
   Result := True;
 end;
-
-
