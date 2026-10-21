@@ -1,13 +1,13 @@
 ﻿#ifndef MyAppVersion
-#define MyAppVersion "1.0.6"
+#define MyAppVersion "1.0.7"
 #endif
 
 #ifndef MyAppSourceDir
-#define MyAppSourceDir "..\publish\ChildGuard-v1.0.6-win-x64"
+#define MyAppSourceDir "..\publish\ChildGuard-v1.0.7-win-x64"
 #endif
 
 #ifndef MyOutputBaseFilename
-#define MyOutputBaseFilename "ChildGuard-v1.0.6-Setup"
+#define MyOutputBaseFilename "ChildGuard-v1.0.7-Setup"
 #endif
 
 [Setup]
@@ -60,7 +60,7 @@ Name: "{group}\{cm:UninstallProgram,童伴守护}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\童伴守护"; Filename: "{app}\Haidou.ChildGuard.Wpf.exe"; IconFilename: "{app}\Resources\logo.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Haidou.ChildGuard.Wpf.exe"; Description: "{cm:LaunchProgram,童伴守护}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Haidou.ChildGuard.Wpf.exe"; Description: "{cm:LaunchProgram,童伴守护}"; Flags: nowait postinstall skipifsilent runascurrentuser
 
 [Code]
 function InitializeSetup(): Boolean;
