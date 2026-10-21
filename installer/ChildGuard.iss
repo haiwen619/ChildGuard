@@ -1,13 +1,13 @@
 ﻿#ifndef MyAppVersion
-#define MyAppVersion "1.0.7"
+#define MyAppVersion "1.0.8"
 #endif
 
 #ifndef MyAppSourceDir
-#define MyAppSourceDir "..\publish\ChildGuard-v1.0.7-win-x64"
+#define MyAppSourceDir "..\publish\ChildGuard-v1.0.8-win-x64"
 #endif
 
 #ifndef MyOutputBaseFilename
-#define MyOutputBaseFilename "ChildGuard-v1.0.7-Setup"
+#define MyOutputBaseFilename "ChildGuard-v1.0.8-Setup"
 #endif
 
 [Setup]

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title="就寝休息 · 夜间健康守护"
+        Title="{DynamicResource Curfew.Title}"
         WindowStyle="None"
         AllowsTransparency="True"
         Topmost="True"
@@ -24,10 +24,10 @@
                     <TextBlock Text="🌙" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
-                <TextBlock Text="夜深了，该睡觉啦" FontSize="25" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                <TextBlock Text="{DynamicResource Curfew.Title}" FontSize="25" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                 <TextBlock x:Name="TxtCurfewPrompt" Text="当前处于健康就寝时段 (22:00 ~ 07:00)" FontSize="13.5" FontWeight="SemiBold" Foreground="#58A6FF" HorizontalAlignment="Center" Margin="0,0,0,14"/>
 
-                <TextBlock Text="充足与规律的睡眠是少年儿童身心发育与视力保护的黄金基石。请关闭电脑，安心就寝休息。"
+                <TextBlock Text="{DynamicResource Curfew.Subtitle}"
                            TextWrapping="Wrap" TextAlignment="Center" FontSize="12.5" Foreground="#8B949E" LineHeight="20" Margin="0,0,0,28"/>
 
                 <!-- 密码输入区域 (供家长临时放行) -->
@@ -41,13 +41,13 @@
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <ui:Button Grid.Column="0" Content="取消" Appearance="Secondary" Height="34" Click="BtnCancelAuth_Click"/>
-                        <ui:Button Grid.Column="2" Content="确认解锁" Appearance="Primary" Height="34" Click="BtnConfirmAuth_Click"/>
+                        <ui:Button Grid.Column="0" Content="{DynamicResource Common.Cancel}" Appearance="Secondary" Height="34" Click="BtnCancelAuth_Click"/>
+                        <ui:Button Grid.Column="2" Content="{DynamicResource Common.Confirm}" Appearance="Primary" Height="34" Click="BtnConfirmAuth_Click"/>
                     </Grid>
                 </StackPanel>
 
                 <StackPanel x:Name="PanelDefaultBtns" Orientation="Horizontal" HorizontalAlignment="Center">
-                    <ui:Button Content="🔐 家长临时借用" Appearance="Secondary" Height="38" Padding="20,0" Margin="0,0,12,0" Click="BtnRequestParent_Click"/>
+                    <ui:Button Content="{DynamicResource Curfew.ParentUnlock}" Appearance="Secondary" Height="38" Padding="20,0" Margin="0,0,12,0" Click="BtnRequestParent_Click"/>
                     <ui:Button Content="🔌 正常关机睡觉" Appearance="Primary" Height="38" Padding="20,0" Click="BtnShutdown_Click"/>
                 </StackPanel>
             </StackPanel>

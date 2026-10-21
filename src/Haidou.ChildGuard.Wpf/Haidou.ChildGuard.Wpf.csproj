@@ -35,9 +35,9 @@
     <Description>开源公益级 Windows 青少年数字健康与终端监护系统</Description>
     <Copyright>Copyright © 2026 海文娜AI. All rights reserved.</Copyright>
     <AssemblyTitle>童伴守护</AssemblyTitle>
-    <Version>1.0.5</Version>
-    <FileVersion>1.0.5.0</FileVersion>
-    <AssemblyVersion>1.0.5.0</AssemblyVersion>
+    <Version>1.0.8</Version>
+    <FileVersion>1.0.8.0</FileVersion>
+    <AssemblyVersion>1.0.8.0</AssemblyVersion>
   </PropertyGroup>
 
 </Project>

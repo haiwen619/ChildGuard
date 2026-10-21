@@ -1,3 +1,4 @@
+using Haidou.ChildGuard.App.Services;
 using Haidou.ChildGuard.Application.UseCases.Auditing;
 using Haidou.ChildGuard.Application.Interfaces;
 using System.Runtime.InteropServices;
@@ -1242,6 +1243,135 @@ public partial class MainWindow : FluentWindow
 
         base.OnClosed(e);
     }
+
+    #region 多语言支持与国家/IP 自适应切换
+
+    private bool _isUpdatingLanguageUi = false;
+
+    private void InitLanguageUi()
+    {
+        _isUpdatingLanguageUi = true;
+        try
+        {
+            string pref = LanguageService.Instance.SelectedPreference;
+
+            // 同步侧边栏 ComboBox
+            if (CmbNavLanguage != null)
+            {
+                foreach (ComboBoxItem item in CmbNavLanguage.Items)
+                {
+                    if (item.Tag?.ToString() == pref)
+                    {
+                        CmbNavLanguage.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+
+            // 同步关于面板 RadioButton
+            if (RbLangAuto != null && RbLangZh != null && RbLangEn != null)
+            {
+                RbLangAuto.IsChecked = (pref == LanguageService.AutoMode);
+                RbLangZh.IsChecked = (pref == LanguageService.Chinese);
+                RbLangEn.IsChecked = (pref == LanguageService.English);
+            }
+
+            // 更新检测到的国家显示
+            if (TxtDetectedCountry != null)
+            {
+                TxtDetectedCountry.Text = LanguageService.Instance.DetectedCountryDisplay;
+            }
+        }
+        finally
+        {
+            _isUpdatingLanguageUi = false;
+        }
+
+        // 监听语言切换事件
+        LanguageService.Instance.LanguageChanged += (s, langCode) =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateTrayMenuText();
+                if (TxtDetectedCountry != null)
+                {
+                    TxtDetectedCountry.Text = LanguageService.Instance.DetectedCountryDisplay;
+                }
+            });
+        };
+
+        UpdateTrayMenuText();
+    }
+
+    private void CmbLanguage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isUpdatingLanguageUi) return;
+        if (CmbNavLanguage?.SelectedItem is ComboBoxItem item && item.Tag is string langPref)
+        {
+            LanguageService.Instance.SetLanguage(langPref);
+            _isUpdatingLanguageUi = true;
+            try
+            {
+                if (RbLangAuto != null && RbLangZh != null && RbLangEn != null)
+                {
+                    RbLangAuto.IsChecked = (langPref == LanguageService.AutoMode);
+                    RbLangZh.IsChecked = (langPref == LanguageService.Chinese);
+                    RbLangEn.IsChecked = (langPref == LanguageService.English);
+                }
+            }
+            finally
+            {
+                _isUpdatingLanguageUi = false;
+            }
+        }
+    }
+
+    private void RbLang_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingLanguageUi) return;
+        if (sender is System.Windows.Controls.RadioButton rb && rb.Tag is string langPref)
+        {
+            LanguageService.Instance.SetLanguage(langPref);
+            _isUpdatingLanguageUi = true;
+            try
+            {
+                if (CmbNavLanguage != null)
+                {
+                    foreach (ComboBoxItem item in CmbNavLanguage.Items)
+                    {
+                        if (item.Tag?.ToString() == langPref)
+                        {
+                            CmbNavLanguage.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _isUpdatingLanguageUi = false;
+            }
+        }
+    }
+
+    private void UpdateTrayMenuText()
+    {
+        try
+        {
+            if (_notifyIcon == null) return;
+            _notifyIcon.Text = LanguageService.T("Tray.Tooltip", "海豆·童伴守护 (运行中)");
+
+            if (_notifyIcon.ContextMenuStrip != null && _notifyIcon.ContextMenuStrip.Items.Count >= 4)
+            {
+                _notifyIcon.ContextMenuStrip.Items[0].Text = LanguageService.T("Tray.ShowMain", "📊 打开守护控制中心");
+                _notifyIcon.ContextMenuStrip.Items[1].Text = LanguageService.T("App.LocalFirstBadge", "🛡️ 状态: 纯本地离线保护中");
+                _notifyIcon.ContextMenuStrip.Items[3].Text = LanguageService.T("Nav.Exit", "🚪 退出童伴守护 (需家长密码)");
+            }
+        }
+        catch { }
+    }
+
+    #endregion
 }
 
 

@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using Haidou.ChildGuard.App.Services;
 
 namespace Haidou.ChildGuard.App;
 
@@ -17,6 +18,9 @@ public partial class App : System.Windows.Application
     {
         // 关键：强制设置当前工作目录为 exe 所在目录，杜绝因外部调用目录不同导致资源与看门狗路径找不到
         Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+
+        // 初始化多语言与国家/IP 自适应系统
+        LanguageService.Instance.Initialize();
 
         // 注册全方位未处理异常捕获，杜绝静默闪退，并记录到本地日志
         SetupCrashReporting();

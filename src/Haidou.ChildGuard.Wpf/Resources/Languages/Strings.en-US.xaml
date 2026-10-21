@@ -1,0 +1,130 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Application Basic Info -->
+    <system:String x:Key="App.Title">Haidou ChildGuard - Pure Local Digital Health Companion</system:String>
+    <system:String x:Key="App.Name">Haidou ChildGuard</system:String>
+    <system:String x:Key="App.Subtitle">Youth Digital Wellbeing &amp; Terminal Protection</system:String>
+    <system:String x:Key="App.VersionPrefix">Version</system:String>
+    <system:String x:Key="App.LocalEngineReady">Offline Engine Running</system:String>
+    <system:String x:Key="App.LocalFirstBadge">🛡️ 100% Pure Local Computation</system:String>
+
+    <!-- Side Navigation Bar -->
+    <system:String x:Key="Nav.Overview">Overview</system:String>
+    <system:String x:Key="Nav.Apps">App Usage</system:String>
+    <system:String x:Key="Nav.Policy">Guard Policies</system:String>
+    <system:String x:Key="Nav.Totp">Parent Auth &amp; TOTP</system:String>
+    <system:String x:Key="Nav.ScreenAudit">Screen Health Audit</system:String>
+    <system:String x:Key="Nav.About">About &amp; Settings</system:String>
+    <system:String x:Key="Nav.Exit">Exit ChildGuard</system:String>
+
+    <!-- Overview Panel -->
+    <system:String x:Key="Overview.Title">Today's Digital Wellbeing Overview</system:String>
+    <system:String x:Key="Overview.Subtitle">Comprehensive time analytics, screen addiction prevention &amp; vision care engine</system:String>
+    <system:String x:Key="Overview.Kpi.ScreenTime">Total Screen Time Today</system:String>
+    <system:String x:Key="Overview.Kpi.RemainingTime">Remaining Screen Time</system:String>
+    <system:String x:Key="Overview.Kpi.EyeCare">Eye Care Mode</system:String>
+    <system:String x:Key="Overview.Kpi.ActiveApp">Active Foreground App</system:String>
+    <system:String x:Key="Overview.Kpi.Running">Running</system:String>
+    <system:String x:Key="Overview.Kpi.Idle">Idle</system:String>
+    <system:String x:Key="Overview.Ranking.Title">Top App Usage Today (Top 5)</system:String>
+    <system:String x:Key="Overview.EyeCareCard.Title">Vision Guard &amp; Warm Light Filter</system:String>
+    <system:String x:Key="Overview.EyeCareCard.Warmth">Blue Light Warmth</system:String>
+    <system:String x:Key="Overview.EyeCareCard.Countdown">Next Vision Break Countdown</system:String>
+    <system:String x:Key="Overview.EyeCareCard.Rule202020">Following 20-20-20 rule: Every 20 minutes, look at something 20 feet away for 20 seconds</system:String>
+
+    <!-- App Usage Audit Panel (Apps) -->
+    <system:String x:Key="Apps.Title">Application Usage &amp; Session Details</system:String>
+    <system:String x:Key="Apps.Subtitle">Local timeline engine securely tracks process activity and heartbeats with full offline retention</system:String>
+    <system:String x:Key="Apps.Col.Process">Process Name</system:String>
+    <system:String x:Key="Apps.Col.Title">Window Title</system:String>
+    <system:String x:Key="Apps.Col.Duration">Duration</system:String>
+    <system:String x:Key="Apps.Col.Category">Category</system:String>
+    <system:String x:Key="Apps.Col.LastActive">Last Active</system:String>
+    <system:String x:Key="Apps.Btn.Refresh">🔄 Refresh List</system:String>
+    <system:String x:Key="Apps.Btn.Export">📥 Export Details</system:String>
+
+    <!-- Guard Policy Settings Panel (Policy) -->
+    <system:String x:Key="Policy.Title">Healthy Routine &amp; Guard Policies</system:String>
+    <system:String x:Key="Policy.Subtitle">Configure daily maximum quota, gaming duration caps, bedtime curfews and web domain filters</system:String>
+    <system:String x:Key="Policy.DailyLimit">Daily Total Screen Limit</system:String>
+    <system:String x:Key="Policy.SingleGameLimit">Single Session Game Limit</system:String>
+    <system:String x:Key="Policy.CurfewTime">Night Bedtime Curfew (Lockdown)</system:String>
+    <system:String x:Key="Policy.CurfewStart">Start Time</system:String>
+    <system:String x:Key="Policy.CurfewEnd">End Time</system:String>
+    <system:String x:Key="Policy.Minutes">Minutes</system:String>
+    <system:String x:Key="Policy.Btn.Save">💾 Save &amp; Apply Policies</system:String>
+    <system:String x:Key="Policy.WebFilter.Title">Web Shield &amp; Malicious Site Blocker (Hosts Offline Redirect)</system:String>
+    <system:String x:Key="Policy.WebFilter.Placeholder">Enter domain to block (e.g., example.com)</system:String>
+    <system:String x:Key="Policy.WebFilter.BtnAdd">➕ Add Blocked Domain</system:String>
+
+    <!-- Parent Auth & TOTP Panel -->
+    <system:String x:Key="Totp.Title">Parental Authority &amp; Two-Factor Auth (TOTP)</system:String>
+    <system:String x:Key="Totp.Subtitle">Standard TOTP algorithm, compatible with Microsoft Authenticator, Google Authenticator &amp; WeChat</system:String>
+    <system:String x:Key="Totp.Card.Bind">📱 Mobile Security Token Binding</system:String>
+    <system:String x:Key="Totp.ScanTip">Scan QR code using any 2FA Authenticator app on your mobile phone:</system:String>
+    <system:String x:Key="Totp.SecretKey">Secret Key</system:String>
+    <system:String x:Key="Totp.VerifyCode">6-Digit Code</system:String>
+    <system:String x:Key="Totp.BtnVerify">✅ Verify &amp; Bind</system:String>
+    <system:String x:Key="Totp.Card.Password">🔑 Emergency Master Password</system:String>
+    <system:String x:Key="Totp.NewPassword">New Password</system:String>
+    <system:String x:Key="Totp.ConfirmPassword">Confirm Password</system:String>
+    <system:String x:Key="Totp.BtnSavePassword">💾 Update Master Password</system:String>
+
+    <!-- Screen Content Health Audit Panel (ScreenAudit) -->
+    <system:String x:Key="Audit.Title">Screen Health Audit · Offline Intelligent Guard</system:String>
+    <system:String x:Key="Audit.Subtitle">Windows native offline OCR + sensitive word trie · 100% local computation · 0 text stored when safe</system:String>
+    <system:String x:Key="Audit.BadgeReady">Local OCR Engine Ready</system:String>
+    <system:String x:Key="Audit.BtnTrigger">⚡ Audit Screen Now</system:String>
+    <system:String x:Key="Audit.LockTip">🔒 Parental Lock Active: Parent authentication required to inspect flagged samples</system:String>
+    <system:String x:Key="Audit.BtnUnlock">🔑 Parent Unlock</system:String>
+    <system:String x:Key="Audit.Col.Time">Sample Time</system:String>
+    <system:String x:Key="Audit.Col.Process">Source Process</system:String>
+    <system:String x:Key="Audit.Col.Window">Window Title</system:String>
+    <system:String x:Key="Audit.Col.Category">Risk Category</system:String>
+    <system:String x:Key="Audit.Col.Status">Status</system:String>
+    <system:String x:Key="Audit.Col.Action">Action</system:String>
+    <system:String x:Key="Audit.BtnAck">Acknowledge</system:String>
+
+    <!-- About & Settings Panel -->
+    <system:String x:Key="About.Title">About Haidou ChildGuard</system:String>
+    <system:String x:Key="About.Subtitle">Mission: 100% pure local, no commercial ads, zero cloud telemetry, open-source digital health platform.</system:String>
+    <system:String x:Key="About.Settings.Title">🌐 Language &amp; Internationalization Settings</system:String>
+    <system:String x:Key="About.Settings.LangTip">Automatically detect language from Country/IP or manually select preferred language:</system:String>
+    <system:String x:Key="About.Settings.LangAuto">🌐 Auto Detect (Smart Match by Location / IP)</system:String>
+    <system:String x:Key="About.Settings.LangZh">🇨🇳 简体中文 (Simplified Chinese)</system:String>
+    <system:String x:Key="About.Settings.LangEn">🇺🇸 English (US)</system:String>
+    <system:String x:Key="About.Settings.DetectedCountry">Detected Country / Region</system:String>
+    <system:String x:Key="About.LocalFirst.Title">🛡️ Absolute Data Localization Guarantee (Local-First)</system:String>
+    <system:String x:Key="About.LocalFirst.Content">• Never uploads screenshots, logs, or keystrokes to any cloud server;&#x0a;• SQLite local encrypted storage with Windows DPAPI hardware protection, fully functional offline;&#x0a;• 7-day rolling automatic cleanup to preserve disk space.</system:String>
+    <system:String x:Key="About.Stalkerware.Title">🤝 Coalition Against Stalkerware Compliance</system:String>
+    <system:String x:Key="About.Stalkerware.Content">• Our tool guides and protects adolescent wellbeing, never secretive surveillance;&#x0a;• Persistent tray icon ensures full visibility and transparency for all protective actions.</system:String>
+
+    <!-- Curfew & Eye Care Windows -->
+    <system:String x:Key="Curfew.Title">🌙 Bedtime Curfew In Effect</system:String>
+    <system:String x:Key="Curfew.Subtitle">It's time to sleep and recharge for a healthier tomorrow. See you then!</system:String>
+    <system:String x:Key="Curfew.ParentUnlock">🔑 Parent Temporary Unlock</system:String>
+    <system:String x:Key="EyeCare.Title">👀 Vision Rest Break Reminder</system:String>
+    <system:String x:Key="EyeCare.Subtitle">You've been viewing the screen continuously. Look away at distance or nature to relax your eyes.</system:String>
+    <system:String x:Key="EyeCare.RemainingSeconds">Remaining Break Time</system:String>
+    <system:String x:Key="EyeCare.Seconds">sec</system:String>
+
+    <!-- System Tray & Dialogs -->
+    <system:String x:Key="Tray.Tooltip">Haidou ChildGuard (Running)</system:String>
+    <system:String x:Key="Tray.ShowMain">🖥️ Show Dashboard</system:String>
+    <system:String x:Key="Tray.ToggleEyeCare">🌿 Toggle Eye Care Filter</system:String>
+    <system:String x:Key="Tray.Exit">❌ Exit ChildGuard</system:String>
+    <system:String x:Key="Dialog.ParentAuthRequired">Parent Authentication</system:String>
+    <system:String x:Key="Dialog.InputPassword">Please enter master management password or 6-digit TOTP code:</system:String>
+    <system:String x:Key="Dialog.PasswordWrong">Verification failed: Incorrect password or expired TOTP code.</system:String>
+    <system:String x:Key="Dialog.PolicySavedSuccess">Policies saved successfully and applied immediately!</system:String>
+    <system:String x:Key="Dialog.ExitConfirmTitle">Confirm Exit</system:String>
+    <system:String x:Key="Dialog.ExitConfirmMessage">Are you sure you want to exit ChildGuard? Time tracking and protection will be paused.</system:String>
+
+    <!-- Common Buttons -->
+    <system:String x:Key="Common.Confirm">OK</system:String>
+    <system:String x:Key="Common.Cancel">Cancel</system:String>
+    <system:String x:Key="Common.Save">Save</system:String>
+    <system:String x:Key="Common.Close">Close</system:String>
+</ResourceDictionary>

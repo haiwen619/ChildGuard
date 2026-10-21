@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="clr-namespace:Wpf.Ui.Controls;assembly=Wpf.Ui"
         mc:Ignorable="d"
-        Title="海豆·童伴守护 (Haidou ChildGuard) - 纯本地数字健康护航"
+        Title="{DynamicResource App.Title}"
         Height="780" Width="1180"
         MinHeight="680" MinWidth="980"
         WindowStartupLocation="CenterScreen"
@@ -148,28 +148,28 @@
                         <Button x:Name="BtnNavOverview" Style="{StaticResource NavButtonStyle}" Tag="Active" Click="BtnNav_Click" CommandParameter="0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📊" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="今日健康概览"/>
+                                <TextBlock Text="{DynamicResource Nav.Overview}"/>
                             </StackPanel>
                         </Button>
 
                         <Button x:Name="BtnNavApps" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="1">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📱" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="应用使用明细"/>
+                                <TextBlock Text="{DynamicResource Nav.Apps}"/>
                             </StackPanel>
                         </Button>
 
                         <Button x:Name="BtnNavPolicy" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="2">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="⏳" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="防沉迷与健康策略"/>
+                                <TextBlock Text="{DynamicResource Nav.Policy}"/>
                             </StackPanel>
                         </Button>
 
                         <Button x:Name="BtnNavTotp" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="3">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🔐" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="家长离线 2FA 与密码"/>
+                                <TextBlock Text="{DynamicResource Nav.Totp}"/>
                             </StackPanel>
                         </Button>
 
@@ -177,7 +177,7 @@
                             <Grid Width="170">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="🔍" FontSize="14" Margin="0,0,10,0"/>
-                                    <TextBlock Text="屏幕内容健康审计"/>
+                                    <TextBlock Text="{DynamicResource Nav.ScreenAudit}"/>
                                 </StackPanel>
                                 <Border x:Name="BadgeAuditCount" Visibility="Collapsed" HorizontalAlignment="Right" Background="#D9383A" CornerRadius="8" Padding="6,1" VerticalAlignment="Center">
                                     <TextBlock x:Name="TxtAuditBadgeCount" Text="0" FontSize="10" Foreground="#FFFFFF" FontWeight="Bold"/>
@@ -188,17 +188,30 @@
                         <Button x:Name="BtnNavAbout" Style="{StaticResource NavButtonStyle}" Click="BtnNav_Click" CommandParameter="4">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="ℹ️" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="公益理念与隐私承诺"/>
+                                <TextBlock Text="{DynamicResource Nav.About}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
                     <!-- 侧边栏底部退出与状态 -->
                     <StackPanel Grid.Row="2">
-                        <Button Style="{StaticResource NavButtonStyle}" Click="BtnRequestExit_Click" Margin="0,0,0,10">
+                                                  <!-- 全局语言切换器 -->
+                          <Border Background="#161B22" BorderBrush="#30363D" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,0,10">
+                              <StackPanel>
+                                  <TextBlock Text="{DynamicResource About.Settings.Title}" FontSize="11" Foreground="#8B949E" Margin="0,0,0,4"/>
+                                  <ComboBox x:Name="CmbNavLanguage" Height="28" Background="#0D1117" Foreground="#E6EDF3" BorderBrush="#30363D" FontSize="11.5"
+                                            SelectionChanged="CmbLanguage_SelectionChanged">
+                                      <ComboBoxItem Tag="auto" Content="{DynamicResource About.Settings.LangAuto}" IsSelected="True"/>
+                                      <ComboBoxItem Tag="zh-CN" Content="{DynamicResource About.Settings.LangZh}"/>
+                                      <ComboBoxItem Tag="en-US" Content="{DynamicResource About.Settings.LangEn}"/>
+                                  </ComboBox>
+                              </StackPanel>
+                          </Border>
+
+                          <Button Style="{StaticResource NavButtonStyle}" Click="BtnRequestExit_Click" Margin="0,0,0,10">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🚪" FontSize="14" Margin="0,0,10,0"/>
-                                <TextBlock Text="退出童伴守护 (需密码)" Foreground="#FF7B72"/>
+                                <TextBlock Text="{DynamicResource Nav.Exit}" Foreground="#FF7B72"/>
                             </StackPanel>
                         </Button>
 
@@ -714,13 +727,36 @@
                         <!-- 面板 4: 关于与公益声明 -->
                         <ScrollViewer x:Name="PanelAbout" Visibility="Collapsed">
                             <StackPanel>
-                                <TextBlock Text="关于 海豆·童伴守护 (Haidou ChildGuard)" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
-                                <TextBlock Text="项目定位：100% 纯本地、无商业广告、零隐私上云的开源公益级青少年数码健康护航系统。"
+                                <TextBlock Text="{DynamicResource About.Title}" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,4"/>
+                                <TextBlock Text="{DynamicResource About.Subtitle}"
                                            FontSize="12" Foreground="#8B949E" Margin="0,0,0,20"/>
+
+                                <!-- 多语言与地理位置设置卡片 -->
+                                <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource About.Settings.Title}" FontSize="14.5" FontWeight="Bold" Foreground="#A371F7" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{DynamicResource About.Settings.LangTip}" FontSize="12.5" Foreground="#8B949E" Margin="0,0,0,10"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{DynamicResource About.Settings.DetectedCountry}" FontSize="12" Foreground="#8B949E" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <TextBlock x:Name="TxtDetectedCountry" Grid.Column="1" Text="CN (China)" FontSize="12" Foreground="#58A6FF" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </Grid>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <RadioButton x:Name="RbLangAuto" Content="{DynamicResource About.Settings.LangAuto}" Foreground="#E6EDF3" IsChecked="True" Margin="0,0,18,0" Checked="RbLang_Checked" Tag="auto"/>
+                                            <RadioButton x:Name="RbLangZh" Content="{DynamicResource About.Settings.LangZh}" Foreground="#E6EDF3" Margin="0,0,18,0" Checked="RbLang_Checked" Tag="zh-CN"/>
+                                            <RadioButton x:Name="RbLangEn" Content="{DynamicResource About.Settings.LangEn}" Foreground="#E6EDF3" Checked="RbLang_Checked" Tag="en-US"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
 
                                 <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,14">
                                     <StackPanel>
-                                        <TextBlock Text="🛡️ 绝对数据本地化承诺 (Local-First)" FontSize="14.5" FontWeight="Bold" Foreground="#58A6FF" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{DynamicResource About.LocalFirst.Title}" FontSize="14.5" FontWeight="Bold" Foreground="#58A6FF" Margin="0,0,0,6"/>
                                         <TextBlock Text="• 绝不上传任何屏幕截图、窗口日志、按键信息至任何云端服务器；&#x0a;• 采用 SQLite 本地闭环存储，密钥受 Windows DPAPI 硬件保护，断网完全正常运行；&#x0a;• 7 天滚动自动覆盖清理，决不无故挤占家庭电脑硬盘空间。"
                                                    TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="20"/>
                                     </StackPanel>
@@ -728,7 +764,7 @@
 
                                 <Border Style="{StaticResource KpiCardStyle}">
                                     <StackPanel>
-                                        <TextBlock Text="🤝 反跟踪软件联盟 (Coalition Against Stalkerware) 合规宣言" FontSize="14.5" FontWeight="Bold" Foreground="#3FB950" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{DynamicResource About.Stalkerware.Title}" FontSize="14.5" FontWeight="Bold" Foreground="#3FB950" Margin="0,0,0,6"/>
                                         <TextBlock Text="• 我们构建工具是为了引导和保护未成年人的身心视力健康，而非搞隐匿偷窥；&#x0a;• 桌面托盘保持常驻清晰状态，任何屏幕守护动作均有可见透明标识。"
                                                    TextWrapping="Wrap" FontSize="12.5" Foreground="#8B949E" LineHeight="20"/>
                                     </StackPanel>
